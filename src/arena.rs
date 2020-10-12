@@ -13,7 +13,9 @@ pub enum Cardinal {
 }
 pub struct SpriteGhost {
     /// 0, 1 or 2 for a 3 ghost arena
-    pub id: u8,
+    id: u8,
+    /// Parent scale factor, to inverse it when defining translations
+    parent_scale: Vec3,
 }
 
 /// Tag component for Entity with SpriteGhost children
@@ -26,6 +28,7 @@ impl SpawnWithGhosts for Commands {
     ///! Ghost 'translation' and rotation will be kept in sync,
     fn spawn_with_ghosts(&mut self, sprite_components: SpriteComponents) -> &mut Self {
         let material = sprite_components.material.clone();
+        let parent_scale = sprite_components.transform.scale();
         self.spawn(sprite_components)
             .with(SpriteGhostParent {})
             .with_children(|parent| {
@@ -35,7 +38,7 @@ impl SpawnWithGhosts for Commands {
                             material,
                             ..Default::default()
                         })
-                        .with(SpriteGhost { id });
+                        .with(SpriteGhost { id, parent_scale });
                 }
             })
     }
@@ -69,8 +72,8 @@ pub fn spriteghost_quadrant_system(
             (Cardinal::SW, 2) => (-arena.size.x(), 0.0),
             _ => panic!("Unexpected arena.shown,ghost.id combination"),
         };
-        *(transform.translation_mut().x_mut()) = dx;
-        *(transform.translation_mut().y_mut()) = dy;
+        *(transform.translation_mut().x_mut()) = dx / ghost.parent_scale.x();
+        *(transform.translation_mut().y_mut()) = dy / ghost.parent_scale.y();
     }
 }
 

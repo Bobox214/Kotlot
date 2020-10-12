@@ -117,6 +117,16 @@ pub fn spawn_background(
         transform: Transform::from_translation(Vec3::new(0.0, 0.0, -10.0)).with_scale(CAMERA_SCALE),
         ..Default::default()
     });
+    commands.spawn_with_ghosts(SpriteComponents {
+        material: materials.add(
+            asset_server
+                .load("assets/spaceMeteors_001.png")
+                .unwrap()
+                .into(),
+        ),
+        transform: Transform::from_translation(Vec3::new(400.0, -200.0, -8.0)).with_scale(0.5),
+        ..Default::default()
+    });
 }
 fn ship_movement_system(
     time: Res<Time>,
