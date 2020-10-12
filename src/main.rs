@@ -1,6 +1,7 @@
 use bevy::{prelude::*, render::camera::Camera};
 use bevy::{window::WindowId, winit::WinitWindows};
 use bevy_contrib_bobox::Cursor2dWorldPos;
+use std::f32::consts::PI;
 use winit::window::CursorIcon;
 
 const CAMERA_SCALE: f32 = 1.0;
@@ -29,7 +30,34 @@ fn main() {
 pub struct FollowedCamera(Entity);
 
 struct Velocity(Vec2);
-struct Spaceship {}
+struct Spaceship {
+    max_angvel: f32,
+    max_linvel: f32,
+}
+impl Spaceship {
+    /// Compute the velocity to reach world coordinate, within ship limits.
+    pub fn velocity_to(
+        &self,
+        ship_transform: &Transform,
+        world_x: f32,
+        world_y: f32,
+        delta_seconds: f32,
+    ) -> Vec2 {
+        let (ship_vec, mut ship_angle) = ship_transform.rotation().to_axis_angle();
+        // ship_vec can be Z or -Z;
+        let delta_x = world_x - ship_transform.translation().x();
+        let delta_y = world_y - ship_transform.translation().y();
+        ship_angle = ship_angle * ship_vec.z();
+        let max_angvel = self.max_angvel * delta_seconds;
+        let delta_angle = Vec2::new(ship_angle.cos(), ship_angle.sin())
+            .angle_between(Vec2::new(delta_x, delta_y))
+            .max(-max_angvel)
+            .min(max_angvel);
+        let new_angle = ship_angle + delta_angle;
+        let velocity = Vec2::new(new_angle.cos(), new_angle.sin()) * self.max_linvel;
+        velocity
+    }
+}
 
 pub fn setup(
     mut commands: Commands,
@@ -57,7 +85,10 @@ pub fn setup(
             ..Default::default()
         })
         .with(Velocity(Vec2::zero()))
-        .with(Spaceship {})
+        .with(Spaceship {
+            max_angvel: 2.0 * PI,
+            max_linvel: 400.0,
+        })
         .with(FollowedCamera(camera_entity));
     //let window = windows.get_window(WindowId::primary()).unwrap();
     //window.set_cursor_icon(CursorIcon::Crosshair);
@@ -80,22 +111,18 @@ pub fn spawn_background(
     });
 }
 fn ship_movement_system(
+    time: Res<Time>,
     cursor_world_pos: Res<Cursor2dWorldPos>,
     mouse_button: Res<Input<MouseButton>>,
     mut query_spaceship: Query<(&Spaceship, Mut<Velocity>, Mut<Transform>)>,
 ) {
     if mouse_button.pressed(MouseButton::Left) {
-        for (_ship, mut velocity, mut ship_transform) in &mut query_spaceship.iter() {
+        for (ship, mut velocity, mut ship_transform) in &mut query_spaceship.iter() {
             let world_x = cursor_world_pos.world_pos.x();
             let world_y = cursor_world_pos.world_pos.y();
-            let ship_x = ship_transform.translation().x();
-            let ship_y = ship_transform.translation().y();
-            let new_velocity = Vec2::new(world_x - ship_x, world_y - ship_y);
-            velocity.0 = new_velocity;
+            velocity.0 = ship.velocity_to(&*ship_transform, world_x, world_y, time.delta_seconds);
 
-            ship_transform.set_rotation(Quat::from_rotation_z(
-                libm::atan2f(world_y - ship_y, world_x - ship_x) - 3.1415 / 2.0,
-            ))
+            ship_transform.set_rotation(Quat::from_rotation_z(velocity.0.y().atan2(velocity.0.x())))
         }
     }
 }

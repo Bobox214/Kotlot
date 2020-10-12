@@ -10,7 +10,6 @@ bevy = { git = "https://github.com/bevyengine/bevy" }
 #bevy = "0.2.1"
 rand = "0.7.3"
 ncollide2d = "0.24.0"
-libm = "0.2.1"
 winit = "0.23"
 bevy_contrib_bobox = { path = "../bevy_contrib_bobox" }
 
