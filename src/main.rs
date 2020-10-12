@@ -8,6 +8,9 @@ const CAMERA_SCALE: f32 = 1.0;
 const WINDOW_WIDTH: u32 = 1280;
 const WINDOW_HEIGHT: u32 = 800;
 
+mod arena;
+use arena::*;
+
 fn main() {
     App::build()
         .add_resource(ClearColor(Color::rgb_u8(5, 5, 10)))
@@ -24,12 +27,14 @@ fn main() {
         .add_system(ship_movement_system.system())
         .add_system(position_system.system())
         .add_system(camera_follow_system.system())
+        .add_system(spriteghost_quadrant_system.system()) // After camera_follow to catch Arena.shown mutations
+        .add_system(spriteghost_sync_system.system())
         .run();
 }
 
 pub struct FollowedCamera(Entity);
 
-struct Velocity(Vec2);
+pub struct Velocity(pub Vec2);
 struct Spaceship {
     max_angvel: f32,
     max_linvel: f32,
@@ -92,14 +97,17 @@ pub fn setup(
         .with(FollowedCamera(camera_entity));
     //let window = windows.get_window(WindowId::primary()).unwrap();
     //window.set_cursor_icon(CursorIcon::Crosshair);
+    commands.insert_resource(Arena {
+        size: Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32),
+        shown: Cardinal::NW,
+    });
 }
-
 pub fn spawn_background(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    commands.spawn(SpriteComponents {
+    commands.spawn_with_ghosts(SpriteComponents {
         material: materials.add(
             asset_server
                 .load("assets/pexels-francesco-ungaro-998641.png")
@@ -127,23 +135,24 @@ fn ship_movement_system(
     }
 }
 
-fn position_system(time: Res<Time>, mut query: Query<(Mut<Transform>, Mut<Velocity>)>) {
-    let elapsed = time.delta_seconds;
-    for (mut transform, mut velocity) in &mut query.iter() {
-        let translation = transform.translation_mut();
-        *translation.x_mut() += velocity.0.x() * elapsed;
-        *translation.y_mut() += velocity.0.y() * elapsed;
-        velocity.0 = velocity.0 * 0.1f32.powf(time.delta_seconds);
-    }
-}
-
 fn camera_follow_system(
+    mut arena: ResMut<Arena>,
     mut query_transform: Query<(&FollowedCamera, Changed<Transform>)>,
     query_camera: Query<With<Camera, Mut<Transform>>>,
 ) {
     for (followed_camera, transform) in &mut query_transform.iter() {
         if let Ok(mut camera_transform) = query_camera.get_mut::<Transform>(followed_camera.0) {
             camera_transform.set_translation(transform.translation());
+            let shown = match (transform.translation().x(), transform.translation().y()) {
+                (x, y) if x <= 0.0 && y <= 0.0 => Cardinal::SW,
+                (x, y) if x <= 0.0 && y > 0.0 => Cardinal::NW,
+                (x, y) if x > 0.0 && y <= 0.0 => Cardinal::SE,
+                (x, y) if x > 0.0 && y > 0.0 => Cardinal::NE,
+                _ => panic!("Conditions should have catch everything"),
+            };
+            if arena.shown != shown {
+                arena.shown = shown;
+            }
         }
     }
 }
