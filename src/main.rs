@@ -1,15 +1,16 @@
 use bevy::{prelude::*, render::camera::Camera};
-use bevy::{window::WindowId, winit::WinitWindows};
 use bevy_contrib_bobox::Cursor2dWorldPos;
+use bevy_prototype_input_map::InputMapPlugin;
 use std::f32::consts::PI;
-use winit::window::CursorIcon;
 
 const CAMERA_SCALE: f32 = 1.0;
 const WINDOW_WIDTH: u32 = 1280;
 const WINDOW_HEIGHT: u32 = 800;
 
 mod arena;
+mod input;
 use arena::*;
+use input::*;
 
 fn main() {
     App::build()
@@ -22,9 +23,11 @@ fn main() {
         })
         .add_default_plugins()
         .add_plugin(bevy_contrib_bobox::Cursor2dWorldPosPlugin)
+        .add_plugin(InputMapPlugin::default())
+        .add_startup_system(setup_input.system())
         .add_startup_system(setup.system())
         .add_startup_system(spawn_background.system())
-        .add_system(ship_movement_system.system())
+        .add_system(action_system.system())
         .add_system(position_system.system())
         .add_system(camera_follow_system.system())
         .add_system(spriteghost_quadrant_system.system()) // After camera_follow to catch Arena.shown mutations
@@ -35,9 +38,10 @@ fn main() {
 pub struct FollowedCamera(Entity);
 
 pub struct Velocity(pub Vec2);
-struct Spaceship {
-    max_angvel: f32,
-    max_linvel: f32,
+pub struct UserControlled {}
+pub struct Spaceship {
+    pub max_angvel: f32,
+    pub max_linvel: f32,
 }
 impl Spaceship {
     /// Compute the velocity to reach world coordinate, within ship limits.
@@ -68,7 +72,6 @@ pub fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    windows: Res<WinitWindows>,
 ) {
     let camera_entity = commands
         .spawn(Camera2dComponents {
@@ -89,14 +92,13 @@ pub fn setup(
             transform: Transform::from_scale(0.3),
             ..Default::default()
         })
+        .with(UserControlled {})
         .with(Velocity(Vec2::zero()))
         .with(Spaceship {
             max_angvel: 2.0 * PI,
             max_linvel: 400.0,
         })
         .with(FollowedCamera(camera_entity));
-    //let window = windows.get_window(WindowId::primary()).unwrap();
-    //window.set_cursor_icon(CursorIcon::Crosshair);
     commands.insert_resource(Arena {
         size: Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32),
         shown: Cardinal::NW,
@@ -128,23 +130,6 @@ pub fn spawn_background(
         ..Default::default()
     });
 }
-fn ship_movement_system(
-    time: Res<Time>,
-    cursor_world_pos: Res<Cursor2dWorldPos>,
-    mouse_button: Res<Input<MouseButton>>,
-    mut query_spaceship: Query<(&Spaceship, Mut<Velocity>, Mut<Transform>)>,
-) {
-    if mouse_button.pressed(MouseButton::Left) {
-        for (ship, mut velocity, mut ship_transform) in &mut query_spaceship.iter() {
-            let world_x = cursor_world_pos.world_pos.x();
-            let world_y = cursor_world_pos.world_pos.y();
-            velocity.0 = ship.velocity_to(&*ship_transform, world_x, world_y, time.delta_seconds);
-
-            ship_transform.set_rotation(Quat::from_rotation_z(velocity.0.y().atan2(velocity.0.x())))
-        }
-    }
-}
-
 fn camera_follow_system(
     mut arena: ResMut<Arena>,
     mut query_transform: Query<(&FollowedCamera, Changed<Transform>)>,

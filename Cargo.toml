@@ -12,6 +12,7 @@ rand = "0.7.3"
 ncollide2d = "0.24.0"
 winit = "0.23"
 bevy_contrib_bobox = { path = "../bevy_contrib_bobox" }
+bevy_prototype_input_map = { git = "https://github.com/PradeepKumarRajamanickam/bevy_input_map"}
 
 [patch.crates-io]
 bevy= {git="https://github.com/bevyengine/bevy"}
