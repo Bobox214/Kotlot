@@ -7,11 +7,11 @@ pub enum ArenaQuadrant {
     SW,
     SE,
 }
-pub struct SpriteGhost {
+pub struct SpriteGhostChild {
     /// 0, 1 or 2 for a 3 ghost arena
     id: u8,
-    /// Parent scale factor, to inverse it when defining translations
-    parent_scale: Vec3,
+    /// Parent entity to get the transform
+    parent: Entity,
 }
 
 /// Tag component for Entity with SpriteGhost children
@@ -24,19 +24,21 @@ impl SpawnWithGhosts for Commands {
     ///! Ghost 'translation' and rotation will be kept in sync,
     fn spawn_with_ghosts(&mut self, sprite_components: SpriteComponents) -> &mut Self {
         let material = sprite_components.material.clone();
-        let parent_scale = sprite_components.transform.scale;
-        self.spawn(sprite_components)
-            .with(SpriteGhostParent {})
-            .with_children(|parent| {
-                for id in 0..3 {
-                    parent
-                        .spawn(SpriteComponents {
-                            material: material.clone(),
-                            ..Default::default()
-                        })
-                        .with(SpriteGhost { id, parent_scale });
-                }
-            })
+        {
+            let mut commands = self.commands.lock();
+            commands.spawn(sprite_components).with(SpriteGhostParent {});
+            let parent = commands.current_entity.unwrap();
+            for id in 0..3 {
+                commands
+                    .spawn(SpriteComponents {
+                        material: material.clone(),
+                        ..Default::default()
+                    })
+                    .with(SpriteGhostChild { id, parent });
+            }
+            commands.current_entity = Some(parent);
+        }
+        self
     }
 }
 
@@ -49,27 +51,31 @@ pub struct Arena {
 }
 
 pub fn spriteghost_quadrant_system(
-    arena: ChangedRes<Arena>,
-    mut query: Query<(&SpriteGhost, Mut<Transform>)>,
+    arena: Res<Arena>,
+    mut query: Query<(&SpriteGhostChild, Mut<Transform>)>,
+    query_transform: Query<&Transform>,
 ) {
     for (ghost, mut transform) in &mut query.iter() {
-        let (dx, dy) = match (arena.shown, ghost.id) {
-            (ArenaQuadrant::NW, 0) => (-arena.size.x(), 0.0),
-            (ArenaQuadrant::NW, 1) => (-arena.size.x(), arena.size.y()),
-            (ArenaQuadrant::NW, 2) => (0.0, arena.size.y()),
-            (ArenaQuadrant::NE, 0) => (0.0, arena.size.y()),
-            (ArenaQuadrant::NE, 1) => (arena.size.x(), arena.size.y()),
-            (ArenaQuadrant::NE, 2) => (arena.size.x(), 0.0),
-            (ArenaQuadrant::SE, 0) => (arena.size.x(), 0.0),
-            (ArenaQuadrant::SE, 1) => (arena.size.x(), -arena.size.y()),
-            (ArenaQuadrant::SE, 2) => (0.0, -arena.size.y()),
-            (ArenaQuadrant::SW, 0) => (0.0, -arena.size.y()),
-            (ArenaQuadrant::SW, 1) => (-arena.size.x(), -arena.size.y()),
-            (ArenaQuadrant::SW, 2) => (-arena.size.x(), 0.0),
-            _ => panic!("Unexpected arena.shown,ghost.id combination"),
-        };
-        *(transform.translation.x_mut()) = dx / ghost.parent_scale.x();
-        *(transform.translation.y_mut()) = dy / ghost.parent_scale.y();
+        if let Ok(parent_transform) = query_transform.get::<Transform>(ghost.parent) {
+            let translation = match (arena.shown, ghost.id) {
+                (ArenaQuadrant::NW, 0) => Vec3::new(-arena.size.x(), 0.0, 0.0),
+                (ArenaQuadrant::NW, 1) => Vec3::new(-arena.size.x(), arena.size.y(), 0.0),
+                (ArenaQuadrant::NW, 2) => Vec3::new(0.0, arena.size.y(), 0.0),
+                (ArenaQuadrant::NE, 0) => Vec3::new(0.0, arena.size.y(), 0.0),
+                (ArenaQuadrant::NE, 1) => Vec3::new(arena.size.x(), arena.size.y(), 0.0),
+                (ArenaQuadrant::NE, 2) => Vec3::new(arena.size.x(), 0.0, 0.0),
+                (ArenaQuadrant::SE, 0) => Vec3::new(arena.size.x(), 0.0, 0.0),
+                (ArenaQuadrant::SE, 1) => Vec3::new(arena.size.x(), -arena.size.y(), 0.0),
+                (ArenaQuadrant::SE, 2) => Vec3::new(0.0, -arena.size.y(), 0.0),
+                (ArenaQuadrant::SW, 0) => Vec3::new(0.0, -arena.size.y(), 0.0),
+                (ArenaQuadrant::SW, 1) => Vec3::new(-arena.size.x(), -arena.size.y(), 0.0),
+                (ArenaQuadrant::SW, 2) => Vec3::new(-arena.size.x(), 0.0, 0.0),
+                _ => panic!("Unexpected arena.shown,ghost.id combination"),
+            };
+            transform.translation = parent_transform.translation + translation;
+            transform.rotation = parent_transform.rotation;
+            transform.scale = parent_transform.scale;
+        }
     }
 }
 

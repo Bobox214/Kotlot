@@ -9,8 +9,10 @@ const WINDOW_HEIGHT: u32 = 800;
 
 mod arena;
 mod input;
+mod weapons;
 use arena::*;
 use input::*;
+use weapons::*;
 
 fn main() {
     App::build()
@@ -24,15 +26,19 @@ fn main() {
         .add_default_plugins()
         .add_plugin(bevy_contrib_bobox::Cursor2dWorldPosPlugin)
         .add_plugin(InputMapPlugin::default())
+        .add_event::<FireWeaponEvent>()
         .add_startup_system(setup_input.system())
         .add_startup_system(setup.system())
         .add_startup_system(spawn_background.system())
-        .add_system(orientation_system.system())
         .add_system(action_system.system())
+        .add_system(fire_weapon_system.system())
         .add_system(position_system.system())
         .add_system(camera_follow_system.system())
+        .add_system(orientation_system.system())
         .add_system(spriteghost_quadrant_system.system()) // After camera_follow to catch Arena.shown mutations
         .add_system(spriteghost_sync_system.system())
+        .add_system(despawn_laser_system.system())
+        .add_system(weapon_system.system())
         .run();
 }
 
@@ -44,6 +50,10 @@ pub struct UserControlled {}
 pub struct Spaceship {
     pub max_angvel: f32,
     pub max_linvel: f32,
+    pub max_latvel: f32,
+}
+pub struct Weapon {
+    pub fire_timer: Timer,
 }
 impl Spaceship {
     /// Compute the velocity to reach world coordinate, within ship limits.
@@ -69,7 +79,6 @@ impl Spaceship {
         velocity
     }
 }
-
 pub fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -93,9 +102,13 @@ pub fn setup(
         .with(Velocity(Vec2::zero()))
         .with(Spaceship {
             max_angvel: 2.0 * PI,
-            max_linvel: 400.0,
+            max_linvel: 300.0,
+            max_latvel: 300.0,
         })
-        .with(FollowedCamera(camera_entity));
+        .with(FollowedCamera(camera_entity))
+        .with(Weapon {
+            fire_timer: Timer::from_seconds(0.2, false),
+        });
     commands.insert_resource(Arena {
         size: Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32),
         shown: ArenaQuadrant::NW,
