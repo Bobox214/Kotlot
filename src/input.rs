@@ -20,6 +20,21 @@ pub fn setup_input(mut input_map: ResMut<InputMap>) {
 pub struct ActionSystemState {
     active_reader: EventReader<OnActionActive>,
 }
+
+/// Update User ship orientation based on mouse position.
+pub fn orientation_system(
+    cursor_world_pos: Res<Cursor2dWorldPos>,
+    mut query_spaceship: Query<With<UserControlled, Mut<Transform>>>,
+) {
+    for mut ship_transform in &mut query_spaceship.iter() {
+        let world_x = cursor_world_pos.world_pos.x();
+        let world_y = cursor_world_pos.world_pos.y();
+        let ship_x = ship_transform.translation.x();
+        let ship_y = ship_transform.translation.y();
+        ship_transform.rotation = Quat::from_rotation_z((world_y - ship_y).atan2(world_x - ship_x));
+    }
+}
+
 pub fn action_system(
     mut state: Local<ActionSystemState>,
     time: Res<Time>,
@@ -32,15 +47,12 @@ pub fn action_system(
         if active_event.action == ACTION_QUIT_APP {
             app_exit_events.send(AppExit);
         } else {
-            for (ship, mut velocity, mut ship_transform) in &mut query_spaceship.iter() {
+            for (ship, mut velocity, ship_transform) in &mut query_spaceship.iter() {
                 let world_x = cursor_world_pos.world_pos.x();
                 let world_y = cursor_world_pos.world_pos.y();
                 if active_event.action == ACTION_MOVE {
                     velocity.0 =
                         ship.velocity_to(&*ship_transform, world_x, world_y, time.delta_seconds);
-
-                    ship_transform
-                        .set_rotation(Quat::from_rotation_z(velocity.0.y().atan2(velocity.0.x())))
                 }
                 if active_event.action == ACTION_SHOOT_1 {
                     println!("SHOOT");

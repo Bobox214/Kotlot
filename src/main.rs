@@ -27,6 +27,7 @@ fn main() {
         .add_startup_system(setup_input.system())
         .add_startup_system(setup.system())
         .add_startup_system(spawn_background.system())
+        .add_system(orientation_system.system())
         .add_system(action_system.system())
         .add_system(position_system.system())
         .add_system(camera_follow_system.system())
@@ -37,6 +38,7 @@ fn main() {
 
 pub struct FollowedCamera(Entity);
 
+#[derive(Debug)]
 pub struct Velocity(pub Vec2);
 pub struct UserControlled {}
 pub struct Spaceship {
@@ -52,10 +54,10 @@ impl Spaceship {
         world_y: f32,
         delta_seconds: f32,
     ) -> Vec2 {
-        let (ship_vec, mut ship_angle) = ship_transform.rotation().to_axis_angle();
+        let (ship_vec, mut ship_angle) = ship_transform.rotation.to_axis_angle();
         // ship_vec can be Z or -Z;
-        let delta_x = world_x - ship_transform.translation().x();
-        let delta_y = world_y - ship_transform.translation().y();
+        let delta_x = world_x - ship_transform.translation.x();
+        let delta_y = world_y - ship_transform.translation.y();
         ship_angle = ship_angle * ship_vec.z();
         let max_angvel = self.max_angvel * delta_seconds;
         let delta_angle = Vec2::new(ship_angle.cos(), ship_angle.sin())
@@ -75,7 +77,7 @@ pub fn setup(
 ) {
     let camera_entity = commands
         .spawn(Camera2dComponents {
-            transform: Transform::from_scale(CAMERA_SCALE),
+            transform: Transform::from_scale(Vec3::new(CAMERA_SCALE, CAMERA_SCALE, CAMERA_SCALE)),
             ..Default::default()
         })
         .current_entity()
@@ -83,13 +85,8 @@ pub fn setup(
     commands.spawn(UiCameraComponents::default());
     commands
         .spawn(SpriteComponents {
-            material: materials.add(
-                asset_server
-                    .load("assets/playerShip1_red.png")
-                    .unwrap()
-                    .into(),
-            ),
-            transform: Transform::from_scale(0.3),
+            material: materials.add(asset_server.load("playerShip1_red.png").into()),
+            transform: Transform::from_scale(Vec3::new(0.3, 0.3, 0.3)),
             ..Default::default()
         })
         .with(UserControlled {})
@@ -101,7 +98,7 @@ pub fn setup(
         .with(FollowedCamera(camera_entity));
     commands.insert_resource(Arena {
         size: Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32),
-        shown: Cardinal::NW,
+        shown: ArenaQuadrant::NW,
     });
 }
 pub fn spawn_background(
@@ -112,21 +109,23 @@ pub fn spawn_background(
     commands.spawn_with_ghosts(SpriteComponents {
         material: materials.add(
             asset_server
-                .load("assets/pexels-francesco-ungaro-998641.png")
-                .unwrap()
+                .load("pexels-francesco-ungaro-998641.png")
                 .into(),
         ),
-        transform: Transform::from_translation(Vec3::new(0.0, 0.0, -10.0)).with_scale(CAMERA_SCALE),
+        transform: Transform {
+            translation: Vec3::new(0.0, 0.0, -10.0),
+            scale: Vec3::new(CAMERA_SCALE, CAMERA_SCALE, CAMERA_SCALE),
+            ..Default::default()
+        },
         ..Default::default()
     });
     commands.spawn_with_ghosts(SpriteComponents {
-        material: materials.add(
-            asset_server
-                .load("assets/spaceMeteors_001.png")
-                .unwrap()
-                .into(),
-        ),
-        transform: Transform::from_translation(Vec3::new(400.0, -200.0, -8.0)).with_scale(0.5),
+        material: materials.add(asset_server.load("spaceMeteors_001.png").into()),
+        transform: Transform {
+            translation: Vec3::new(400.0, -200.0, -8.0),
+            scale: Vec3::new(0.5, 0.5, 0.5),
+            ..Default::default()
+        },
         ..Default::default()
     });
 }
@@ -137,13 +136,17 @@ fn camera_follow_system(
 ) {
     for (followed_camera, transform) in &mut query_transform.iter() {
         if let Ok(mut camera_transform) = query_camera.get_mut::<Transform>(followed_camera.0) {
-            camera_transform.set_translation(transform.translation());
-            let shown = match (transform.translation().x(), transform.translation().y()) {
-                (x, y) if x <= 0.0 && y <= 0.0 => Cardinal::SW,
-                (x, y) if x <= 0.0 && y > 0.0 => Cardinal::NW,
-                (x, y) if x > 0.0 && y <= 0.0 => Cardinal::SE,
-                (x, y) if x > 0.0 && y > 0.0 => Cardinal::NE,
-                _ => panic!("Conditions should have catch everything"),
+            camera_transform.translation = transform.translation;
+            let shown = match (transform.translation.x(), transform.translation.y()) {
+                (x, y) if x <= 0.0 && y <= 0.0 => ArenaQuadrant::SW,
+                (x, y) if x <= 0.0 && y > 0.0 => ArenaQuadrant::NW,
+                (x, y) if x > 0.0 && y <= 0.0 => ArenaQuadrant::SE,
+                (x, y) if x > 0.0 && y > 0.0 => ArenaQuadrant::NE,
+                _ => panic!(
+                    "Conditions should have catch everything {} {}",
+                    transform.translation.x(),
+                    transform.translation.y()
+                ),
             };
             if arena.shown != shown {
                 arena.shown = shown;
