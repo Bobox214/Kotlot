@@ -35,9 +35,10 @@ pub fn fire_weapon_system(
                 .with(Laser {
                     despawn_timer: Timer::from_seconds(2.0, false),
                 })
-                .with(Velocity(
-                    (transform.rotation * Vec3::unit_x()).truncate() * 1000.0,
-                ));
+                .with(Movement {
+                    speed: (transform.rotation * Vec3::unit_x()).truncate() * 500.0,
+                    dampening: 1.0,
+                });
             let sound = asset_server.load("sfx_laser1.mp3");
             audio_output.play(sound);
         }

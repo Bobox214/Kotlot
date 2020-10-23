@@ -86,24 +86,28 @@ pub fn spriteghost_sync_system() {}
 pub fn position_system(
     time: Res<Time>,
     arena: Res<Arena>,
-    mut query: Query<(Mut<Transform>, Mut<Velocity>)>,
+    mut query: Query<(Mut<Transform>, Mut<Movement>)>,
 ) {
     let elapsed = time.delta_seconds;
-    for (mut transform, mut velocity) in &mut query.iter() {
-        transform.translation += Vec3::new(velocity.0.x() * elapsed, velocity.0.y() * elapsed, 0.0);
-        velocity.0 = velocity.0 * 0.1f32.powf(time.delta_seconds);
+    for (mut transform, mut movement) in &mut query.iter() {
+        transform.translation += Vec3::new(
+            movement.speed.x() * elapsed,
+            movement.speed.y() * elapsed,
+            0.0,
+        );
+        movement.speed = movement.speed * movement.dampening.powf(time.delta_seconds);
 
         let half_width = arena.size.x() / 2.0;
         let half_height = arena.size.y() / 2.0;
         // Wrap around the world, as a torus.
-        if transform.translation.x() < -half_width && velocity.0.x() < 0.0 {
+        if transform.translation.x() < -half_width && movement.speed.x() < 0.0 {
             *transform.translation.x_mut() = half_width;
-        } else if transform.translation.x() > half_width && velocity.0.x() > 0.0 {
+        } else if transform.translation.x() > half_width && movement.speed.x() > 0.0 {
             *transform.translation.x_mut() = -half_width;
         }
-        if transform.translation.y() < -half_height && velocity.0.y() < 0.0 {
+        if transform.translation.y() < -half_height && movement.speed.y() < 0.0 {
             *transform.translation.y_mut() = half_height;
-        } else if transform.translation.y() > half_height && velocity.0.y() > 0.0 {
+        } else if transform.translation.y() > half_height && movement.speed.y() > 0.0 {
             *transform.translation.y_mut() = -half_height;
         }
     }

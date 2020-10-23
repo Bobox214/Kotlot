@@ -45,7 +45,11 @@ fn main() {
 pub struct FollowedCamera(Entity);
 
 #[derive(Debug)]
-pub struct Velocity(pub Vec2);
+pub struct Movement {
+    pub speed: Vec2,
+    /// Defines speed factor after 1s
+    pub dampening: f32,
+}
 pub struct UserControlled {}
 pub struct Spaceship {
     pub max_angvel: f32,
@@ -56,7 +60,7 @@ pub struct Weapon {
     pub fire_timer: Timer,
 }
 impl Spaceship {
-    /// Compute the velocity to reach world coordinate, within ship limits.
+    /// Compute the speed to reach world coordinate, within ship limits.
     pub fn velocity_to(
         &self,
         ship_transform: &Transform,
@@ -99,7 +103,10 @@ pub fn setup(
             ..Default::default()
         })
         .with(UserControlled {})
-        .with(Velocity(Vec2::zero()))
+        .with(Movement {
+            speed: Vec2::zero(),
+            dampening: 0.1,
+        })
         .with(Spaceship {
             max_angvel: 2.0 * PI,
             max_linvel: 300.0,

@@ -27,7 +27,6 @@ pub struct ActionSystemState {
 }
 
 /// Update User ship orientation based on mouse position.
-/// Taking into account the velocity to keep ship 'pointing' to the mouse
 pub fn orientation_system(
     cursor_world_pos: Res<Cursor2dWorldPos>,
     mut query_spaceship: Query<With<UserControlled, Mut<Transform>>>,
@@ -53,7 +52,7 @@ pub fn action_system(
             (
                 Entity,
                 &Spaceship,
-                Mut<Velocity>,
+                Mut<Movement>,
                 Mut<Transform>,
                 Mut<Weapon>,
             ),
@@ -64,7 +63,7 @@ pub fn action_system(
         if active_event.action == ACTION_QUIT_APP {
             app_exit_events.send(AppExit);
         } else {
-            for (ship_entity, ship, mut velocity, ship_transform, mut weapon) in
+            for (ship_entity, ship, mut movement, ship_transform, mut weapon) in
                 &mut query_spaceship.iter()
             {
                 if active_event.action == ACTION_SHOOT_1 {
@@ -76,19 +75,19 @@ pub fn action_system(
                     }
                 }
                 if active_event.action == ACTION_FORWARD {
-                    velocity.0 += (ship_transform.rotation
+                    movement.speed += (ship_transform.rotation
                         * (Vec3::unit_x() * ship.max_linvel)
                         * time.delta_seconds)
                         .truncate();
                 }
                 if active_event.action == ACTION_BACKWARD {
-                    velocity.0 -= (ship_transform.rotation
+                    movement.speed -= (ship_transform.rotation
                         * (Vec3::unit_x() * ship.max_linvel)
                         * time.delta_seconds)
                         .truncate();
                 }
                 if active_event.action == ACTION_RCS_L {
-                    velocity.0 += (ship_transform.rotation
+                    movement.speed += (ship_transform.rotation
                         * Quat::from_rotation_z(FRAC_PI_2)
                         * Vec3::unit_x()
                         * ship.max_latvel
@@ -96,7 +95,7 @@ pub fn action_system(
                         .truncate();
                 }
                 if active_event.action == ACTION_RCS_R {
-                    velocity.0 += (ship_transform.rotation
+                    movement.speed += (ship_transform.rotation
                         * Quat::from_rotation_z(-FRAC_PI_2)
                         * Vec3::unit_x()
                         * ship.max_latvel
