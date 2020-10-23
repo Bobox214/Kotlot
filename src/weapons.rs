@@ -53,7 +53,7 @@ pub fn despawn_laser_system(
     for (entity, mut laser) in &mut query.iter() {
         laser.despawn_timer.tick(time.delta_seconds);
         if laser.despawn_timer.finished {
-            commands.despawn_recursive(entity);
+            commands.despawn_with_ghosts(entity);
         }
     }
 }

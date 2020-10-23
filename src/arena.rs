@@ -1,4 +1,5 @@
 use super::*;
+use bevy::ecs::Command;
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub enum ArenaQuadrant {
@@ -7,38 +8,68 @@ pub enum ArenaQuadrant {
     SW,
     SE,
 }
-pub struct SpriteGhostChild {
-    /// 0, 1 or 2 for a 3 ghost arena
-    id: u8,
+pub struct SpriteGhost {
     /// Parent entity to get the transform
-    parent: Entity,
+    pub parent: Entity,
+    /// 0, 1 or 2 for a 3 ghost arena
+    pub id: u8,
 }
 
 /// Tag component for Entity with SpriteGhost children
-struct SpriteGhostParent {}
-pub trait SpawnWithGhosts {
-    fn spawn_with_ghosts(&mut self, sprite_components: SpriteComponents) -> &mut Self;
+pub struct SpriteGhostChildren(pub Vec<Entity>);
+struct DespawnWithGhosts {
+    entity: Entity,
 }
-impl SpawnWithGhosts for Commands {
+
+impl Command for DespawnWithGhosts {
+    fn write(self: Box<Self>, world: &mut World, _resources: &mut Resources) {
+        if let Ok(children) = world.get::<SpriteGhostChildren>(self.entity) {
+            for &entity in children.0.clone().iter() {
+                if let Err(e) = world.despawn(entity) {
+                    println!("Failed to despawn ghost entity {:?}: {}", entity.id(), e);
+                }
+            }
+        }
+        if let Err(e) = world.despawn(self.entity) {
+            println!(
+                "Failed to despawn main entity {:?}: {}",
+                self.entity.id(),
+                e
+            );
+        }
+    }
+}
+pub trait SpriteGhostExt {
+    fn spawn_with_ghosts(&mut self, sprite_components: SpriteComponents) -> &mut Self;
+    fn despawn_with_ghosts(&mut self, entity: Entity) -> &mut Self;
+}
+impl SpriteGhostExt for Commands {
     ///! Spawn the SpriteComponents, and 3 ghosts child with the same material
     ///! Ghost 'translation' and rotation will be kept in sync,
     fn spawn_with_ghosts(&mut self, sprite_components: SpriteComponents) -> &mut Self {
         let material = sprite_components.material.clone();
         {
             let mut commands = self.commands.lock();
-            commands.spawn(sprite_components).with(SpriteGhostParent {});
+            commands.spawn(sprite_components);
             let parent = commands.current_entity.unwrap();
-            for id in 0..3 {
-                commands
-                    .spawn(SpriteComponents {
-                        material: material.clone(),
-                        ..Default::default()
-                    })
-                    .with(SpriteGhostChild { id, parent });
-            }
+            let child_ids = (0..3)
+                .map(|id| {
+                    commands
+                        .spawn(SpriteComponents {
+                            material: material.clone(),
+                            ..Default::default()
+                        })
+                        .with(SpriteGhost { parent, id });
+                    commands.current_entity.unwrap()
+                })
+                .collect::<Vec<_>>();
             commands.current_entity = Some(parent);
+            commands.with(SpriteGhostChildren(child_ids));
         }
         self
+    }
+    fn despawn_with_ghosts(&mut self, entity: Entity) -> &mut Self {
+        self.add_command(DespawnWithGhosts { entity })
     }
 }
 
@@ -52,7 +83,7 @@ pub struct Arena {
 
 pub fn spriteghost_quadrant_system(
     arena: Res<Arena>,
-    mut query: Query<(&SpriteGhostChild, Mut<Transform>)>,
+    mut query: Query<(&SpriteGhost, Mut<Transform>)>,
     query_transform: Query<&Transform>,
 ) {
     for (ghost, mut transform) in &mut query.iter() {
