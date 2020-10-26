@@ -1,5 +1,6 @@
 use super::*;
 use bevy::ecs::Command;
+use ncollide2d::pipeline::CollisionObjectSlabHandle;
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub enum ArenaQuadrant {
@@ -17,18 +18,28 @@ pub struct SpriteGhost {
 
 /// Tag component for Entity with SpriteGhost children
 pub struct SpriteGhostChildren(pub Vec<Entity>);
-struct DespawnWithGhosts {
+/// Despawn commands that handles:
+/// . Despawn of the entity itself.
+/// . Despawn of the ghosts sprites.
+/// . Removal from NCollide World
+struct DespawnFromArena {
     entity: Entity,
 }
 
-impl Command for DespawnWithGhosts {
-    fn write(self: Box<Self>, world: &mut World, _resources: &mut Resources) {
+impl Command for DespawnFromArena {
+    fn write(self: Box<Self>, world: &mut World, resources: &mut Resources) {
         if let Ok(children) = world.get::<SpriteGhostChildren>(self.entity) {
             for &entity in children.0.clone().iter() {
                 if let Err(e) = world.despawn(entity) {
                     println!("Failed to despawn ghost entity {:?}: {}", entity.id(), e);
                 }
             }
+        }
+        if let Ok(handle) = world.get::<CollisionObjectSlabHandle>(self.entity) {
+            let mut collide_world = resources
+                .get_mut::<CollisionWorld<f32, Entity>>()
+                .expect("Missing collision world");
+            collide_world.remove(&[*handle]);
         }
         if let Err(e) = world.despawn(self.entity) {
             println!(
@@ -39,11 +50,11 @@ impl Command for DespawnWithGhosts {
         }
     }
 }
-pub trait SpriteGhostExt {
+pub trait ArenaExt {
     fn spawn_with_ghosts(&mut self, sprite_components: SpriteComponents) -> &mut Self;
-    fn despawn_with_ghosts(&mut self, entity: Entity) -> &mut Self;
+    fn despawn_from_arena(&mut self, entity: Entity) -> &mut Self;
 }
-impl SpriteGhostExt for Commands {
+impl ArenaExt for Commands {
     ///! Spawn the SpriteComponents, and 3 ghosts child with the same material
     ///! Ghost 'translation' and rotation will be kept in sync,
     fn spawn_with_ghosts(&mut self, sprite_components: SpriteComponents) -> &mut Self {
@@ -68,8 +79,8 @@ impl SpriteGhostExt for Commands {
         }
         self
     }
-    fn despawn_with_ghosts(&mut self, entity: Entity) -> &mut Self {
-        self.add_command(DespawnWithGhosts { entity })
+    fn despawn_from_arena(&mut self, entity: Entity) -> &mut Self {
+        self.add_command(DespawnFromArena { entity })
     }
 }
 
