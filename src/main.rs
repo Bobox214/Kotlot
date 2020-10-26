@@ -15,13 +15,15 @@ const WINDOW_WIDTH: u32 = 1280;
 const WINDOW_HEIGHT: u32 = 800;
 
 mod arena;
+mod armor;
 mod collision;
 mod input;
-mod weapons;
+mod weapon;
 use arena::*;
+use armor::*;
 use collision::*;
 use input::*;
-use weapons::*;
+use weapon::*;
 
 fn main() {
     App::build()
@@ -50,7 +52,7 @@ fn main() {
         .add_system(collision_system.system())
         .add_system(spriteghost_quadrant_system.system()) // After camera_follow to catch Arena.shown mutations
         .add_system(spriteghost_sync_system.system())
-        .add_system(despawn_laser_system.system())
+        .add_system(lifespan_system.system())
         .add_system(weapon_system.system())
         .run();
 }
@@ -170,17 +172,19 @@ pub fn spawn_background(
         },
         ..Default::default()
     });
-    commands.spawn_with_ghosts(SpriteComponents {
-        material: materials.add(asset_server.load("spaceMeteors_001.png").into()),
-        //sprite: Sprite::new(Vec2::new(215.0, 211.0)),
-        //material: materials.add(Color::rgb(0.5, 0.5, 1.0).into()),
-        transform: Transform {
-            translation: Vec3::new(400.0, -200.0, -8.0),
-            scale: Vec3::splat(0.5),
+    commands
+        .spawn_with_ghosts(SpriteComponents {
+            material: materials.add(asset_server.load("spaceMeteors_001.png").into()),
+            //sprite: Sprite::new(Vec2::new(215.0, 211.0)),
+            //material: materials.add(Color::rgb(0.5, 0.5, 1.0).into()),
+            transform: Transform {
+                translation: Vec3::new(400.0, -200.0, -8.0),
+                scale: Vec3::splat(0.5),
+                ..Default::default()
+            },
             ..Default::default()
-        },
-        ..Default::default()
-    });
+        })
+        .with(Armor::new(10));
     let entity = commands.current_entity().unwrap();
     let shape = ShapeHandle::new(Ball::new(215.0 * 0.5 * 0.5));
     let (collision_object_handle, _) = collide_world.add(

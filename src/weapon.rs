@@ -1,8 +1,17 @@
 use ncollide2d::shape::Cuboid;
 
 use super::*;
-pub struct Laser {
-    pub despawn_timer: Timer,
+
+#[derive(Copy, Clone, Debug)]
+pub enum DamageKind {
+    Energy,
+}
+pub struct LifeSpanTimer(Timer);
+#[derive(Copy, Clone, Debug)]
+pub struct DamageDealer {
+    pub source: Entity,
+    pub kind: DamageKind,
+    pub value: u32,
 }
 
 pub struct FireWeaponEvent {
@@ -35,8 +44,11 @@ pub fn fire_weapon_system(
                     material: materials.add(asset_server.load("laserRed07.png").into()),
                     ..Default::default()
                 })
-                .with(Laser {
-                    despawn_timer: Timer::from_seconds(2.0, false),
+                .with(LifeSpanTimer(Timer::from_seconds(2.0, false)))
+                .with(DamageDealer {
+                    source: fire_weapon_event.ship_entity,
+                    kind: DamageKind::Energy,
+                    value: 1,
                 })
                 .with(Movement {
                     speed: (transform.rotation * Vec3::unit_x()).truncate() * 500.0,
@@ -59,15 +71,15 @@ pub fn fire_weapon_system(
     }
 }
 
-pub fn despawn_laser_system(
+pub fn lifespan_system(
     mut commands: Commands,
     time: Res<Time>,
-    mut query: Query<(Entity, Mut<Laser>)>,
+    mut query: Query<(Entity, Mut<LifeSpanTimer>)>,
 ) {
-    for (entity, mut laser) in &mut query.iter() {
-        laser.despawn_timer.tick(time.delta_seconds);
-        if laser.despawn_timer.finished {
-            commands.despawn_with_ghosts(entity);
+    for (entity, mut lifespan_timer) in &mut query.iter() {
+        lifespan_timer.0.tick(time.delta_seconds);
+        if lifespan_timer.0.finished {
+            commands.despawn_from_arena(entity);
         }
     }
 }

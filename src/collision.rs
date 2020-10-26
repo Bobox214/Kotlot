@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use super::*;
 use ncollide2d::{
     na::{self, Isometry2, Vector2},
     pipeline::{CollisionGroups, CollisionObjectSlabHandle},
@@ -44,19 +44,46 @@ pub fn collide_position_system(
         ));
     }
 }
-
+enum CollisionEvent {
+    DamageDealing(Entity, Entity),
+}
 pub fn collision_system(
+    mut commands: Commands,
     mut world: ResMut<CollisionWorld<f32, Entity>>,
-    mut transforms: Query<(Entity, Mut<Transform>)>,
+    asset_server: Res<AssetServer>,
+    audio: ResMut<Audio>,
+    damage_dealers: Query<&DamageDealer>,
+    armors: Query<Mut<Armor>>,
 ) {
     world.update();
+    let mut events = vec![];
     for (h1, h2, _, manifold) in world.contact_pairs(true) {
-        if let Some(tracked_contact) = manifold.deepest_contact() {
-            let contact = tracked_contact.contact;
-            let contact_normal = contact.normal.into_inner();
-            let entity1 = *world.collision_object(h1).unwrap().data();
-            let entity2 = *world.collision_object(h2).unwrap().data();
-            println!("Collision detected!");
+        if let Some(_tracked_contact) = manifold.deepest_contact() {
+            let e1 = *world.collision_object(h1).unwrap().data();
+            let e2 = *world.collision_object(h2).unwrap().data();
+            if damage_dealers.get::<DamageDealer>(e1).is_ok() && armors.get::<Armor>(e2).is_ok() {
+                events.push(CollisionEvent::DamageDealing(e1, e2))
+            }
+            if damage_dealers.get::<DamageDealer>(e2).is_ok() && armors.get::<Armor>(e1).is_ok() {
+                events.push(CollisionEvent::DamageDealing(e2, e1))
+            }
+        }
+    }
+    for event in events.iter() {
+        match event {
+            CollisionEvent::DamageDealing(e1, e2) => {
+                let damage_dealer = damage_dealers.get::<DamageDealer>(*e1).unwrap();
+                let mut armor = armors.get_mut::<Armor>(*e2).unwrap();
+                armor.life -= damage_dealer.value;
+                println!("TOUCHED {}/{}", armor.life, armor.max_life);
+                commands.despawn_from_arena(*e1);
+                if armor.life <= 0 {
+                    commands.despawn_from_arena(*e2);
+                    audio.play(asset_server.load("Explosion_final.mp3"));
+                } else {
+                    audio.play(asset_server.load("Explosion.mp3"));
+                }
+            }
         }
     }
 }
