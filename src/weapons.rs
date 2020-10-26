@@ -17,7 +17,7 @@ pub fn fire_weapon_system(
     fire_weapon_events: Res<Events<FireWeaponEvent>>,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    audio_output: Res<AudioOutput>,
+    audio: Res<Audio>,
     query_transforms: Query<&Transform>,
 ) {
     for fire_weapon_event in state.fire_weapon_listeners.iter(&fire_weapon_events) {
@@ -40,7 +40,7 @@ pub fn fire_weapon_system(
                     dampening: 1.0,
                 });
             let sound = asset_server.load("sfx_laser1.mp3");
-            audio_output.play(sound);
+            audio.play(sound);
         }
     }
 }
