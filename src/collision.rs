@@ -51,9 +51,11 @@ pub fn collision_system(
     mut commands: Commands,
     mut world: ResMut<CollisionWorld<f32, Entity>>,
     asset_server: Res<AssetServer>,
-    audio: ResMut<Audio>,
+    audio: Res<Audio>,
+    mut xp_events: ResMut<Events<XpEvent>>,
     damage_dealers: Query<&DamageDealer>,
     armors: Query<Mut<Armor>>,
+    enemies: Query<Mut<Enemy>>,
 ) {
     world.update();
     let mut events = vec![];
@@ -80,6 +82,12 @@ pub fn collision_system(
                 if armor.life <= 0 {
                     commands.despawn_from_arena(*e2);
                     audio.play(asset_server.load("Explosion_final.mp3"));
+                    if let Ok(enemy) = enemies.get::<Enemy>(*e2) {
+                        xp_events.send(XpEvent {
+                            xp: enemy.xp,
+                            source: damage_dealer.source,
+                        })
+                    }
                 } else {
                     audio.play(asset_server.load("Explosion.mp3"));
                 }

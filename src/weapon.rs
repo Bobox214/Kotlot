@@ -58,7 +58,10 @@ pub fn fire_weapon_system(
             let shape =
                 ShapeHandle::new(Cuboid::new(Vector2::new(37.0 * 0.6 * 0.5, 9.0 * 0.6 * 0.5)));
             let (collision_object_handle, _) = collide_world.add(
-                Isometry2::new(Vector2::new(0.0, 0.0), na::zero()),
+                Isometry2::new(
+                    Vector2::new(transform.translation.x(), transform.translation.y()),
+                    na::zero(),
+                ),
                 shape,
                 collide_groups.missiles,
                 GeometricQueryType::Contacts(0.0, 0.0),
