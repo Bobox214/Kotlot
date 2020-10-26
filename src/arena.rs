@@ -143,3 +143,62 @@ pub fn position_system(
         }
     }
 }
+
+pub fn spawn_arena_markers(
+    mut commands: Commands,
+    arena: Res<Arena>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
+    for x in 0..((arena.size.x() / 200.0) as i32) {
+        for y in 0..((arena.size.y() / 200.0) as i32) {
+            let color = match (x, y) {
+                (0, 0) => Color::rgb(0.9, 0.9, 0.9),
+                (0, _) => Color::rgb(0.7, 0.7, 0.7),
+                (_, 0) => Color::rgb(0.7, 0.7, 0.7),
+                _ => Color::rgb(0.5, 0.5, 0.5),
+            };
+            commands.spawn(SpriteComponents {
+                sprite: Sprite::new(Vec2::new(2.0, 2.0)),
+                material: materials.add(color.into()),
+                transform: Transform {
+                    translation: Vec3::new((x * 100) as f32, (y * 100) as f32, -1.0),
+                    ..Default::default()
+                },
+                ..Default::default()
+            });
+            if x != 0 {
+                commands.spawn(SpriteComponents {
+                    sprite: Sprite::new(Vec2::new(2.0, 2.0)),
+                    material: materials.add(color.into()),
+                    transform: Transform {
+                        translation: Vec3::new((-x * 100) as f32, (y * 100) as f32, -1.0),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                });
+            }
+            if y != 0 {
+                commands.spawn(SpriteComponents {
+                    sprite: Sprite::new(Vec2::new(2.0, 2.0)),
+                    material: materials.add(color.into()),
+                    transform: Transform {
+                        translation: Vec3::new((x * 100) as f32, (-y * 100) as f32, -1.0),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                });
+            }
+            if y != 0 && x != 0 {
+                commands.spawn(SpriteComponents {
+                    sprite: Sprite::new(Vec2::new(2.0, 2.0)),
+                    material: materials.add(color.into()),
+                    transform: Transform {
+                        translation: Vec3::new((-x * 100) as f32, (-y * 100) as f32, -1.0),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                });
+            }
+        }
+    }
+}

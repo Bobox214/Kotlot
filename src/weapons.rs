@@ -1,3 +1,5 @@
+use ncollide2d::shape::Cuboid;
+
 use super::*;
 pub struct Laser {
     pub despawn_timer: Timer,
@@ -18,6 +20,7 @@ pub fn fire_weapon_system(
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     audio: Res<Audio>,
+    (mut collide_world, collide_groups): (ResMut<CollisionWorld<f32, Entity>>, Res<CollideGroups>),
     query_transforms: Query<&Transform>,
 ) {
     for fire_weapon_event in state.fire_weapon_listeners.iter(&fire_weapon_events) {
@@ -39,6 +42,17 @@ pub fn fire_weapon_system(
                     speed: (transform.rotation * Vec3::unit_x()).truncate() * 500.0,
                     dampening: 1.0,
                 });
+            let entity = commands.current_entity().unwrap();
+            let shape =
+                ShapeHandle::new(Cuboid::new(Vector2::new(37.0 * 0.6 * 0.5, 9.0 * 0.6 * 0.5)));
+            let (collision_object_handle, _) = collide_world.add(
+                Isometry2::new(Vector2::new(0.0, 0.0), na::zero()),
+                shape,
+                collide_groups.missiles,
+                GeometricQueryType::Contacts(0.0, 0.0),
+                entity,
+            );
+            commands.insert(entity, (collision_object_handle,));
             let sound = asset_server.load("sfx_laser1.mp3");
             audio.play(sound);
         }
