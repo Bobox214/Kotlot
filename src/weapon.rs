@@ -39,7 +39,11 @@ pub fn fire_weapon_system(
             commands
                 .spawn_with_ghosts(SpriteComponents {
                     transform: Transform {
-                        translation: transform.translation,
+                        translation: Vec3::new(
+                            transform.translation.x(),
+                            transform.translation.y(),
+                            -0.1,
+                        ),
                         rotation: transform.rotation,
                         scale: Vec3::splat(0.6),
                     },

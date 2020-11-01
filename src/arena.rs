@@ -68,6 +68,10 @@ impl ArenaExt for Commands {
                     commands
                         .spawn(SpriteComponents {
                             material: material.clone(),
+                            draw: Draw {
+                                is_visible: false,
+                                ..Default::default()
+                            },
                             ..Default::default()
                         })
                         .with(SpriteGhost { parent, id });
@@ -92,31 +96,38 @@ pub struct Arena {
     pub shown: ArenaQuadrant,
 }
 
+fn get_ghost_translation(arena: &Arena, ghost_id: &u8) -> Vec3 {
+    match (arena.shown, ghost_id) {
+        (ArenaQuadrant::NW, 0) => Vec3::new(-arena.size.x(), 0.0, 0.0),
+        (ArenaQuadrant::NW, 1) => Vec3::new(-arena.size.x(), arena.size.y(), 0.0),
+        (ArenaQuadrant::NW, 2) => Vec3::new(0.0, arena.size.y(), 0.0),
+        (ArenaQuadrant::NE, 0) => Vec3::new(0.0, arena.size.y(), 0.0),
+        (ArenaQuadrant::NE, 1) => Vec3::new(arena.size.x(), arena.size.y(), 0.0),
+        (ArenaQuadrant::NE, 2) => Vec3::new(arena.size.x(), 0.0, 0.0),
+        (ArenaQuadrant::SE, 0) => Vec3::new(arena.size.x(), 0.0, 0.0),
+        (ArenaQuadrant::SE, 1) => Vec3::new(arena.size.x(), -arena.size.y(), 0.0),
+        (ArenaQuadrant::SE, 2) => Vec3::new(0.0, -arena.size.y(), 0.0),
+        (ArenaQuadrant::SW, 0) => Vec3::new(0.0, -arena.size.y(), 0.0),
+        (ArenaQuadrant::SW, 1) => Vec3::new(-arena.size.x(), -arena.size.y(), 0.0),
+        (ArenaQuadrant::SW, 2) => Vec3::new(-arena.size.x(), 0.0, 0.0),
+        _ => panic!("Unexpected arena.shown,ghost.id combination"),
+    }
+}
+
 pub fn spriteghost_quadrant_system(
     arena: Res<Arena>,
-    mut query: Query<(&SpriteGhost, Mut<Transform>)>,
+    mut query: Query<(&SpriteGhost, Mut<Transform>, Mut<Draw>)>,
     query_transform: Query<Without<SpriteGhost, &Transform>>,
 ) {
-    for (ghost, mut transform) in query.iter_mut() {
+    for (ghost, mut transform, mut draw) in query.iter_mut() {
         if let Ok(parent_transform) = query_transform.get_component::<Transform>(ghost.parent) {
-            let translation = match (arena.shown, ghost.id) {
-                (ArenaQuadrant::NW, 0) => Vec3::new(-arena.size.x(), 0.0, 0.0),
-                (ArenaQuadrant::NW, 1) => Vec3::new(-arena.size.x(), arena.size.y(), 0.0),
-                (ArenaQuadrant::NW, 2) => Vec3::new(0.0, arena.size.y(), 0.0),
-                (ArenaQuadrant::NE, 0) => Vec3::new(0.0, arena.size.y(), 0.0),
-                (ArenaQuadrant::NE, 1) => Vec3::new(arena.size.x(), arena.size.y(), 0.0),
-                (ArenaQuadrant::NE, 2) => Vec3::new(arena.size.x(), 0.0, 0.0),
-                (ArenaQuadrant::SE, 0) => Vec3::new(arena.size.x(), 0.0, 0.0),
-                (ArenaQuadrant::SE, 1) => Vec3::new(arena.size.x(), -arena.size.y(), 0.0),
-                (ArenaQuadrant::SE, 2) => Vec3::new(0.0, -arena.size.y(), 0.0),
-                (ArenaQuadrant::SW, 0) => Vec3::new(0.0, -arena.size.y(), 0.0),
-                (ArenaQuadrant::SW, 1) => Vec3::new(-arena.size.x(), -arena.size.y(), 0.0),
-                (ArenaQuadrant::SW, 2) => Vec3::new(-arena.size.x(), 0.0, 0.0),
-                _ => panic!("Unexpected arena.shown,ghost.id combination"),
-            };
+            let translation = get_ghost_translation(&arena, &ghost.id);
             transform.translation = parent_transform.translation + translation;
             transform.rotation = parent_transform.rotation;
             transform.scale = parent_transform.scale;
+            draw.is_visible = true;
+        } else {
+            draw.is_visible = false;
         }
     }
 }
