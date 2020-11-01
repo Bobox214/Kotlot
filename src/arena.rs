@@ -95,10 +95,10 @@ pub struct Arena {
 pub fn spriteghost_quadrant_system(
     arena: Res<Arena>,
     mut query: Query<(&SpriteGhost, Mut<Transform>)>,
-    query_transform: Query<&Transform>,
+    query_transform: Query<Without<SpriteGhost, &Transform>>,
 ) {
-    for (ghost, mut transform) in &mut query.iter() {
-        if let Ok(parent_transform) = query_transform.get::<Transform>(ghost.parent) {
+    for (ghost, mut transform) in query.iter_mut() {
+        if let Ok(parent_transform) = query_transform.get_component::<Transform>(ghost.parent) {
             let translation = match (arena.shown, ghost.id) {
                 (ArenaQuadrant::NW, 0) => Vec3::new(-arena.size.x(), 0.0, 0.0),
                 (ArenaQuadrant::NW, 1) => Vec3::new(-arena.size.x(), arena.size.y(), 0.0),
@@ -131,7 +131,7 @@ pub fn position_system(
     mut query: Query<(Mut<Transform>, Mut<Movement>)>,
 ) {
     let elapsed = time.delta_seconds;
-    for (mut transform, mut movement) in &mut query.iter() {
+    for (mut transform, mut movement) in query.iter_mut() {
         transform.translation += Vec3::new(
             movement.speed.x() * elapsed,
             movement.speed.y() * elapsed,

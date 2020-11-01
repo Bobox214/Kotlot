@@ -33,7 +33,9 @@ pub fn fire_weapon_system(
     query_transforms: Query<&Transform>,
 ) {
     for fire_weapon_event in state.fire_weapon_listeners.iter(&fire_weapon_events) {
-        if let Ok(transform) = query_transforms.get::<Transform>(fire_weapon_event.ship_entity) {
+        if let Ok(transform) =
+            query_transforms.get_component::<Transform>(fire_weapon_event.ship_entity)
+        {
             commands
                 .spawn_with_ghosts(SpriteComponents {
                     transform: Transform {
@@ -79,7 +81,7 @@ pub fn lifespan_system(
     time: Res<Time>,
     mut query: Query<(Entity, Mut<LifeSpanTimer>)>,
 ) {
-    for (entity, mut lifespan_timer) in &mut query.iter() {
+    for (entity, mut lifespan_timer) in &mut query.iter_mut() {
         lifespan_timer.0.tick(time.delta_seconds);
         if lifespan_timer.0.finished {
             commands.despawn_from_arena(entity);
@@ -87,7 +89,7 @@ pub fn lifespan_system(
     }
 }
 pub fn weapon_system(time: Res<Time>, mut query: Query<Mut<Weapon>>) {
-    for mut weapon in &mut query.iter() {
+    for mut weapon in query.iter_mut() {
         weapon.fire_timer.tick(time.delta_seconds);
     }
 }

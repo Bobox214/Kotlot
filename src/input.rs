@@ -31,7 +31,7 @@ pub fn orientation_system(
     cursor_world_pos: Res<Cursor2dWorldPos>,
     mut query_spaceship: Query<With<UserControlled, Mut<Transform>>>,
 ) {
-    for mut ship_transform in &mut query_spaceship.iter() {
+    for mut ship_transform in query_spaceship.iter_mut() {
         let world_x = cursor_world_pos.world_pos.x();
         let world_y = cursor_world_pos.world_pos.y();
         let ship_x = ship_transform.translation.x();
@@ -64,7 +64,7 @@ pub fn action_system(
             app_exit_events.send(AppExit);
         } else {
             for (ship_entity, ship, mut movement, ship_transform, mut weapon) in
-                &mut query_spaceship.iter()
+                query_spaceship.iter_mut()
             {
                 if active_event.action == ACTION_SHOOT_1 {
                     if weapon.fire_timer.finished {

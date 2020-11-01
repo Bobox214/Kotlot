@@ -67,10 +67,10 @@ impl Progression {
 pub fn xp_system(
     mut xp_event_reader: Local<EventReader<XpEvent>>,
     xp_events: Res<Events<XpEvent>>,
-    progressions: Query<Mut<Progression>>,
+    mut progressions: Query<Mut<Progression>>,
 ) {
     for event in xp_event_reader.iter(&*xp_events) {
-        if let Ok(mut progression) = progressions.get_mut::<Progression>(event.source) {
+        if let Ok(mut progression) = progressions.get_component_mut::<Progression>(event.source) {
             progression.add_xp(event.xp);
         }
     }
@@ -82,10 +82,9 @@ pub fn spawn_player_spaceship(
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut collide_world: ResMut<CollisionWorld<f32, Entity>>,
     collide_groups: Res<CollideGroups>,
-    mut cameras: Query<(Entity, &Camera)>,
+    cameras: Query<(Entity, &Camera)>,
 ) {
     let camera_entity = cameras
-        .iter()
         .iter()
         .filter_map(|(entity, camera)| {
             if camera.name == Some(String::from("Camera2d")) {

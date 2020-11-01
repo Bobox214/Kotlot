@@ -115,10 +115,10 @@ pub fn spawn_asteroid(
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut collide_world: ResMut<CollisionWorld<f32, Entity>>,
     collide_groups: Res<CollideGroups>,
-    mut enemies: Query<&Enemy>,
-    mut ship_transforms: Query<With<Spaceship, &Transform>>,
+    enemies: Query<&Enemy>,
+    ship_transforms: Query<With<Spaceship, &Transform>>,
 ) {
-    let n_enemies = enemies.iter().iter().len();
+    let n_enemies = enemies.iter().len();
     if n_enemies < 1 {
         // Find a far enough position
         let mut rng = thread_rng();
@@ -127,7 +127,7 @@ pub fn spawn_asteroid(
         loop {
             x = rng.gen_range(-arena.size.x() / 2.0, arena.size.x() / 2.0);
             y = rng.gen_range(-arena.size.y() / 2.0, arena.size.y() / 2.0);
-            if ship_transforms.iter().iter().all(|transform| {
+            if ship_transforms.iter().all(|transform| {
                 ((transform.translation.x() - x).powi(2) + (transform.translation.y() - y).powi(2))
                     > 300.0f32.powi(2)
             }) {
@@ -160,11 +160,13 @@ pub fn spawn_asteroid(
 }
 fn camera_follow_system(
     mut arena: ResMut<Arena>,
-    mut query_transform: Query<(&FollowedCamera, Changed<Transform>)>,
-    query_camera: Query<With<Camera, Mut<Transform>>>,
+    query_transform: Query<(&FollowedCamera, Changed<Transform>)>,
+    mut query_camera: Query<With<Camera, Mut<Transform>>>,
 ) {
     for (followed_camera, transform) in &mut query_transform.iter() {
-        if let Ok(mut camera_transform) = query_camera.get_mut::<Transform>(followed_camera.0) {
+        if let Ok(mut camera_transform) =
+            query_camera.get_component_mut::<Transform>(followed_camera.0)
+        {
             camera_transform.translation = transform.translation;
             let shown = match (transform.translation.x(), transform.translation.y()) {
                 (x, y) if x <= 0.0 && y <= 0.0 => ArenaQuadrant::SW,

@@ -34,7 +34,7 @@ pub fn setup_ncollide(mut commands: Commands) {
 
 pub fn collide_position_system(
     mut world: ResMut<CollisionWorld<f32, Entity>>,
-    mut query: Query<(&Transform, &CollisionObjectSlabHandle)>,
+    query: Query<(&Transform, &CollisionObjectSlabHandle)>,
 ) {
     for (transform, &handle) in &mut query.iter() {
         let collision_object = world.get_mut(handle).unwrap();
@@ -54,7 +54,7 @@ pub fn collision_system(
     audio: Res<Audio>,
     mut xp_events: ResMut<Events<XpEvent>>,
     damage_dealers: Query<&DamageDealer>,
-    armors: Query<Mut<Armor>>,
+    mut armors: Query<Mut<Armor>>,
     enemies: Query<Mut<Enemy>>,
 ) {
     world.update();
@@ -63,10 +63,14 @@ pub fn collision_system(
         if let Some(_tracked_contact) = manifold.deepest_contact() {
             let e1 = *world.collision_object(h1).unwrap().data();
             let e2 = *world.collision_object(h2).unwrap().data();
-            if damage_dealers.get::<DamageDealer>(e1).is_ok() && armors.get::<Armor>(e2).is_ok() {
+            if damage_dealers.get_component::<DamageDealer>(e1).is_ok()
+                && armors.get_component::<Armor>(e2).is_ok()
+            {
                 events.push(CollisionEvent::DamageDealing(e1, e2))
             }
-            if damage_dealers.get::<DamageDealer>(e2).is_ok() && armors.get::<Armor>(e1).is_ok() {
+            if damage_dealers.get_component::<DamageDealer>(e2).is_ok()
+                && armors.get_component::<Armor>(e1).is_ok()
+            {
                 events.push(CollisionEvent::DamageDealing(e2, e1))
             }
         }
@@ -74,15 +78,15 @@ pub fn collision_system(
     for event in events.iter() {
         match event {
             CollisionEvent::DamageDealing(e1, e2) => {
-                let damage_dealer = damage_dealers.get::<DamageDealer>(*e1).unwrap();
-                let mut armor = armors.get_mut::<Armor>(*e2).unwrap();
+                let damage_dealer = damage_dealers.get_component::<DamageDealer>(*e1).unwrap();
+                let mut armor = armors.get_component_mut::<Armor>(*e2).unwrap();
                 armor.life -= damage_dealer.value;
                 println!("TOUCHED {}/{}", armor.life, armor.max_life);
                 commands.despawn_from_arena(*e1);
                 if armor.life <= 0 {
                     commands.despawn_from_arena(*e2);
                     audio.play(asset_server.load("Explosion_final.mp3"));
-                    if let Ok(enemy) = enemies.get::<Enemy>(*e2) {
+                    if let Ok(enemy) = enemies.get_component::<Enemy>(*e2) {
                         xp_events.send(XpEvent {
                             xp: enemy.xp,
                             source: damage_dealer.source,
