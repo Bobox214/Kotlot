@@ -53,9 +53,11 @@ pub fn collision_system(
     asset_server: Res<AssetServer>,
     audio: Res<Audio>,
     mut xp_events: ResMut<Events<XpEvent>>,
+    mut loot_events: ResMut<Events<LootEvent>>,
     damage_dealers: Query<&DamageDealer>,
     mut armors: Query<Mut<Armor>>,
     enemies: Query<Mut<Enemy>>,
+    transforms: Query<&Transform>,
 ) {
     world.update();
     let mut events = vec![];
@@ -90,7 +92,14 @@ pub fn collision_system(
                         xp_events.send(XpEvent {
                             xp: enemy.xp,
                             source: damage_dealer.source,
-                        })
+                        });
+                        let enemy_translation = transforms
+                            .get_component::<Transform>(*e2)
+                            .expect("Enemy without a transform.")
+                            .translation;
+                        loot_events.send(LootEvent {
+                            position: enemy_translation.truncate(),
+                        });
                     }
                 } else {
                     audio.play(asset_server.load("Explosion.mp3"));

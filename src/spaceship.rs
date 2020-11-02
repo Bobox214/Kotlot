@@ -6,6 +6,7 @@ pub struct Spaceship {
 }
 pub struct Weapon {
     pub fire_timer: Timer,
+    pub munition_lifespan: f32,
 }
 impl Spaceship {
     /// Compute the speed to reach world coordinate, within ship limits.
@@ -115,7 +116,8 @@ pub fn spawn_player_spaceship(
         })
         .with(FollowedCamera(camera_entity))
         .with(Weapon {
-            fire_timer: Timer::from_seconds(0.2, false),
+            fire_timer: Timer::from_seconds(1.0, false),
+            munition_lifespan: 1.0,
         })
         .with(Progression::new());
     let shape = ShapeHandle::new(Ball::new(99.0 * 0.3 * 0.5));

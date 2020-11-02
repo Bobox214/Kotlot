@@ -19,12 +19,14 @@ mod arena;
 mod armor;
 mod collision;
 mod input;
+mod loot;
 mod spaceship;
 mod weapon;
 use arena::*;
 use armor::*;
 use collision::*;
 use input::*;
+use loot::*;
 use spaceship::*;
 use weapon::*;
 
@@ -38,6 +40,7 @@ fn main() {
             ..Default::default()
         })
         .add_event::<XpEvent>()
+        .add_event::<LootEvent>()
         .add_default_plugins()
         .add_plugin(bevy_contrib_bobox::Cursor2dWorldPosPlugin)
         .add_plugin(InputMapPlugin::default())
@@ -61,6 +64,8 @@ fn main() {
         .add_system(lifespan_system.system())
         .add_system(weapon_system.system())
         .add_system(xp_system.system())
+        .add_system(loot_spawn_system.system())
+        .add_system(tweenscale_system.system())
         .run();
 }
 
@@ -144,7 +149,7 @@ pub fn spawn_asteroid(
                 },
                 ..Default::default()
             })
-            .with(Armor::new(10))
+            .with(Armor::new(3))
             .with(Enemy { xp: 2 });
         let entity = commands.current_entity().unwrap();
         let shape = ShapeHandle::new(Ball::new(215.0 * 0.5 * 0.5));

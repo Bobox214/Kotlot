@@ -70,6 +70,7 @@ pub fn action_system(
                     if weapon.fire_timer.finished {
                         fire_weapon_events.send(FireWeaponEvent {
                             ship_entity: ship_entity,
+                            munition_lifespan: 0.5,
                         });
                         weapon.fire_timer.reset();
                     }

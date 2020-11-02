@@ -16,6 +16,7 @@ pub struct DamageDealer {
 
 pub struct FireWeaponEvent {
     pub ship_entity: Entity,
+    pub munition_lifespan: f32,
 }
 
 #[derive(Default)]
@@ -50,7 +51,10 @@ pub fn fire_weapon_system(
                     material: materials.add(asset_server.load("laserRed07.png").into()),
                     ..Default::default()
                 })
-                .with(LifeSpanTimer(Timer::from_seconds(2.0, false)))
+                .with(LifeSpanTimer(Timer::from_seconds(
+                    fire_weapon_event.munition_lifespan,
+                    false,
+                )))
                 .with(DamageDealer {
                     source: fire_weapon_event.ship_entity,
                     kind: DamageKind::Energy,
