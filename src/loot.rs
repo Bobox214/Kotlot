@@ -4,7 +4,7 @@ pub struct LootEvent {
 }
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
-enum Loot {
+pub enum Loot {
     IncreasedRateOfFire(u32),
     IncreasedMunitionDuration(u32),
     None,
@@ -25,6 +25,7 @@ pub fn loot_spawn_system(
     loot_events: Res<Events<LootEvent>>,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    (mut collide_world, collide_groups): (ResMut<CollisionWorld<f32, Entity>>, Res<CollideGroups>),
 ) {
     for event in loot_event_reader.iter(&*loot_events) {
         let mut rng = thread_rng();
@@ -46,6 +47,19 @@ pub fn loot_spawn_system(
                 })
                 .with(loot)
                 .with(TweenScale::new(Vec3::splat(0.4), Vec3::splat(0.75), 1.0));
+            let entity = commands.current_entity().unwrap();
+            let shape = ShapeHandle::new(Ball::new(30.0 * 0.75 * 0.5));
+            let (collision_object_handle, _) = collide_world.add(
+                Isometry2::new(
+                    Vector2::new(event.position.x(), event.position.y()),
+                    na::zero(),
+                ),
+                shape,
+                collide_groups.loots,
+                GeometricQueryType::Contacts(0.0, 0.0),
+                entity,
+            );
+            commands.insert(entity, (collision_object_handle,));
         }
         println!("Spawning {:?}", loot);
     }

@@ -117,7 +117,7 @@ pub fn spawn_player_spaceship(
         .with(FollowedCamera(camera_entity))
         .with(Weapon {
             fire_timer: Timer::from_seconds(1.0, false),
-            munition_lifespan: 1.0,
+            munition_lifespan: 0.5,
         })
         .with(Progression::new());
     let shape = ShapeHandle::new(Ball::new(99.0 * 0.3 * 0.5));
