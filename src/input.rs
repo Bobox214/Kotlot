@@ -3,6 +3,7 @@ use std::f32::consts::FRAC_PI_2;
 use super::*;
 use bevy::app::AppExit;
 use bevy_prototype_input_map::{InputMap, OnActionActive};
+use ncollide2d::pipeline::CollisionObjectSlabHandle;
 
 const ACTION_FORWARD: &str = "FORWARD";
 const ACTION_BACKWARD: &str = "BACKWARD";
@@ -26,6 +27,48 @@ pub struct ActionSystemState {
     active_reader: EventReader<OnActionActive>,
 }
 
+pub struct CursorSelection {
+    pub cursor_collider_handle: CollisionObjectSlabHandle,
+    pub enemies: Vec<Entity>,
+    pub loots: Vec<Entity>,
+}
+pub fn spawn_cursor_collider(
+    mut commands: Commands,
+    (mut collide_world, collide_groups): (ResMut<CollisionWorld<f32, Entity>>, Res<CollideGroups>),
+) {
+    commands.spawn((ColliderType::Cursor,));
+    let entity = commands.current_entity().unwrap();
+    let shape = ShapeHandle::new(Ball::new(1.0));
+    let (cursor_collider_handle, _) = collide_world.add(
+        Isometry2::new(Vector2::new(0.0, 0.0), na::zero()),
+        shape,
+        collide_groups.cursors,
+        GeometricQueryType::Contacts(0.0, 0.0),
+        entity,
+    );
+    commands.insert(entity, (cursor_collider_handle,));
+    commands.insert_resource(CursorSelection {
+        cursor_collider_handle,
+        enemies: vec![],
+        loots: vec![],
+    });
+}
+pub fn cursor_collider_system(
+    cursor_world_pos: Res<Cursor2dWorldPos>,
+    cursor_selection: Res<CursorSelection>,
+    mut collision_world: ResMut<CollisionWorld<f32, Entity>>,
+) {
+    let c1 = collision_world
+        .get_mut(cursor_selection.cursor_collider_handle)
+        .expect("Cursor collision handle no more in the collision world.");
+    c1.set_position(Isometry2::new(
+        Vector2::new(
+            cursor_world_pos.world_pos.x(),
+            cursor_world_pos.world_pos.y(),
+        ),
+        na::zero(),
+    ));
+}
 /// Update User ship orientation based on mouse position.
 pub fn orientation_system(
     cursor_world_pos: Res<Cursor2dWorldPos>,

@@ -41,6 +41,7 @@ fn main() {
         })
         .add_event::<XpEvent>()
         .add_event::<LootEvent>()
+        .add_event::<CollisionEvent>()
         .add_default_plugins()
         .add_plugin(bevy_contrib_bobox::Cursor2dWorldPosPlugin)
         .add_plugin(InputMapPlugin::default())
@@ -49,6 +50,7 @@ fn main() {
         .add_startup_system(setup_input.system())
         .add_startup_system(setup.system())
         .add_startup_system(spawn_background.system())
+        .add_startup_system(spawn_cursor_collider.system())
         .add_startup_system_to_stage(startup_stage::POST_STARTUP, spawn_player_spaceship.system())
         .add_startup_system_to_stage(startup_stage::POST_STARTUP, spawn_arena_markers.system())
         .add_system(spawn_asteroid.system())
@@ -59,6 +61,7 @@ fn main() {
         .add_system(orientation_system.system())
         .add_system(collide_position_system.system())
         .add_system(collision_system.system())
+        .add_system(collision_event_system.system())
         .add_system(spriteghost_quadrant_system.system()) // After camera_follow to catch Arena.shown mutations
         .add_system(spriteghost_sync_system.system())
         .add_system(lifespan_system.system())
@@ -66,6 +69,7 @@ fn main() {
         .add_system(xp_system.system())
         .add_system(loot_spawn_system.system())
         .add_system(tweenscale_system.system())
+        .add_system(cursor_collider_system.system())
         .run();
 }
 
@@ -150,13 +154,14 @@ pub fn spawn_asteroid(
                 ..Default::default()
             })
             .with(Armor::new(3))
-            .with(Enemy { xp: 2 });
+            .with(Enemy { xp: 2 })
+            .with(ColliderType::Enemy);
         let entity = commands.current_entity().unwrap();
         let shape = ShapeHandle::new(Ball::new(215.0 * 0.5 * 0.5));
         let (collision_object_handle, _) = collide_world.add(
             Isometry2::new(Vector2::new(x, y), na::zero()),
             shape,
-            collide_groups.asteroids,
+            collide_groups.enemies,
             GeometricQueryType::Contacts(0.0, 0.0),
             entity,
         );

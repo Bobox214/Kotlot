@@ -63,7 +63,8 @@ pub fn fire_weapon_system(
                 .with(Movement {
                     speed: (transform.rotation * Vec3::unit_x()).truncate() * 500.0,
                     dampening: 1.0,
-                });
+                })
+                .with(ColliderType::Missile);
             let entity = commands.current_entity().unwrap();
             let shape =
                 ShapeHandle::new(Cuboid::new(Vector2::new(37.0 * 0.6 * 0.5, 9.0 * 0.6 * 0.5)));

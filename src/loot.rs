@@ -46,6 +46,7 @@ pub fn loot_spawn_system(
                     ..Default::default()
                 })
                 .with(loot)
+                .with(ColliderType::Loot)
                 .with(TweenScale::new(Vec3::splat(0.4), Vec3::splat(0.75), 1.0));
             let entity = commands.current_entity().unwrap();
             let shape = ShapeHandle::new(Ball::new(30.0 * 0.75 * 0.5));
@@ -61,7 +62,6 @@ pub fn loot_spawn_system(
             );
             commands.insert(entity, (collision_object_handle,));
         }
-        println!("Spawning {:?}", loot);
     }
 }
 

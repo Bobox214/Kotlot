@@ -119,7 +119,8 @@ pub fn spawn_player_spaceship(
             fire_timer: Timer::from_seconds(1.0, false),
             munition_lifespan: 0.5,
         })
-        .with(Progression::new());
+        .with(Progression::new())
+        .with(ColliderType::Ship);
     let shape = ShapeHandle::new(Ball::new(99.0 * 0.3 * 0.5));
     let entity = commands.current_entity().unwrap();
     let (collision_object_handle, _) = collide_world.add(

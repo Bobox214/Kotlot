@@ -7,9 +7,18 @@ use ncollide2d::{
 
 pub struct CollideGroups {
     pub ships: CollisionGroups,
-    pub asteroids: CollisionGroups,
+    pub enemies: CollisionGroups,
     pub missiles: CollisionGroups,
     pub loots: CollisionGroups,
+    pub cursors: CollisionGroups,
+}
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+pub enum ColliderType {
+    Ship,
+    Enemy,
+    Missile,
+    Loot,
+    Cursor,
 }
 pub fn setup_ncollide(mut commands: Commands) {
     let world = CollisionWorld::<f32, Entity>::new(0.02);
@@ -17,9 +26,9 @@ pub fn setup_ncollide(mut commands: Commands) {
         .with_membership(&[1])
         .with_whitelist(&[1, 2, 3, 4])
         .with_blacklist(&[]);
-    let asteroids = CollisionGroups::new()
+    let enemies = CollisionGroups::new()
         .with_membership(&[2])
-        .with_whitelist(&[1, 2, 3])
+        .with_whitelist(&[1, 2, 3, 5])
         .with_blacklist(&[]);
     let missiles = CollisionGroups::new()
         .with_membership(&[3])
@@ -27,13 +36,18 @@ pub fn setup_ncollide(mut commands: Commands) {
         .with_blacklist(&[]);
     let loots = CollisionGroups::new()
         .with_membership(&[4])
-        .with_whitelist(&[1])
+        .with_whitelist(&[1, 5])
+        .with_blacklist(&[]);
+    let cursors = CollisionGroups::new()
+        .with_membership(&[5])
+        .with_whitelist(&[2, 4])
         .with_blacklist(&[]);
     commands.insert_resource(CollideGroups {
         ships,
-        asteroids,
+        enemies,
         missiles,
         loots,
+        cursors,
     });
     commands.insert_resource(world);
 }
@@ -50,15 +64,70 @@ pub fn collide_position_system(
         ));
     }
 }
-enum CollisionEvent {
-    DamageDealing(Entity, Entity),
-    WeaponLooting(Entity, Entity),
+pub enum CollisionEvent {
+    MissileToEnemy(Entity, Entity),
+    ShipToLoot(Entity, Entity),
 }
 pub fn collision_system(
-    mut commands: Commands,
     mut world: ResMut<CollisionWorld<f32, Entity>>,
-    asset_server: Res<AssetServer>,
-    audio: Res<Audio>,
+    mut cursor_selection: ResMut<CursorSelection>,
+    mut collision_events: ResMut<Events<CollisionEvent>>,
+    collider_types: Query<&ColliderType>,
+) {
+    world.update();
+    cursor_selection.enemies = vec![];
+    cursor_selection.loots = vec![];
+    for (h1, h2, _, manifold) in world.contact_pairs(true) {
+        if let Some(_tracked_contact) = manifold.deepest_contact() {
+            let e1 = *world.collision_object(h1).unwrap().data();
+            let e2 = *world.collision_object(h2).unwrap().data();
+            let t1 = *collider_types
+                .get_component::<ColliderType>(e1)
+                .expect("Collision with an Entity without a ColliderType");
+            let t2 = *collider_types
+                .get_component::<ColliderType>(e2)
+                .expect("Collision with an Entity without a ColliderType");
+            if t1 == ColliderType::Missile && t2 == ColliderType::Enemy {
+                collision_events.send(CollisionEvent::MissileToEnemy(e1, e2))
+            }
+            if t2 == ColliderType::Missile && t1 == ColliderType::Enemy {
+                collision_events.send(CollisionEvent::MissileToEnemy(e2, e1))
+            }
+            if t1 == ColliderType::Ship && t2 == ColliderType::Loot {
+                collision_events.send(CollisionEvent::ShipToLoot(e1, e2))
+            }
+            if t2 == ColliderType::Ship && t1 == ColliderType::Loot {
+                collision_events.send(CollisionEvent::ShipToLoot(e2, e1))
+            }
+            if t1 == ColliderType::Cursor {
+                if t2 == ColliderType::Enemy {
+                    cursor_selection.loots.push(e2);
+                    println!("SELECTING enemy");
+                }
+                if t2 == ColliderType::Loot {
+                    cursor_selection.loots.push(e2);
+                    println!("SELECTING loot");
+                }
+            }
+            if t2 == ColliderType::Cursor {
+                if t1 == ColliderType::Enemy {
+                    cursor_selection.loots.push(e1);
+                    println!("SELECTING enemy");
+                }
+                if t2 == ColliderType::Loot {
+                    cursor_selection.loots.push(e1);
+                    println!("SELECTING loot");
+                }
+            }
+        }
+    }
+}
+
+pub fn collision_event_system(
+    mut commands: Commands,
+    mut events: Local<EventReader<CollisionEvent>>,
+    collision_events: ResMut<Events<CollisionEvent>>,
+    (asset_server, audio): (Res<AssetServer>, Res<Audio>),
     mut xp_events: ResMut<Events<XpEvent>>,
     mut loot_events: ResMut<Events<LootEvent>>,
     damage_dealers: Query<&DamageDealer>,
@@ -68,37 +137,9 @@ pub fn collision_system(
     mut weapons: Query<Mut<Weapon>>,
     transforms: Query<&Transform>,
 ) {
-    world.update();
-    let mut events = vec![];
-    for (h1, h2, _, manifold) in world.contact_pairs(true) {
-        if let Some(_tracked_contact) = manifold.deepest_contact() {
-            let e1 = *world.collision_object(h1).unwrap().data();
-            let e2 = *world.collision_object(h2).unwrap().data();
-            if damage_dealers.get_component::<DamageDealer>(e1).is_ok()
-                && armors.get_component::<Armor>(e2).is_ok()
-            {
-                events.push(CollisionEvent::DamageDealing(e1, e2))
-            }
-            if damage_dealers.get_component::<DamageDealer>(e2).is_ok()
-                && armors.get_component::<Armor>(e1).is_ok()
-            {
-                events.push(CollisionEvent::DamageDealing(e2, e1))
-            }
-            if weapons.get_component::<Weapon>(e1).is_ok()
-                && loots.get_component::<Loot>(e2).is_ok()
-            {
-                events.push(CollisionEvent::WeaponLooting(e1, e2));
-            }
-            if weapons.get_component::<Weapon>(e2).is_ok()
-                && loots.get_component::<Loot>(e1).is_ok()
-            {
-                events.push(CollisionEvent::WeaponLooting(e2, e1));
-            }
-        }
-    }
-    for event in events.iter() {
+    for event in events.iter(&collision_events) {
         match event {
-            CollisionEvent::DamageDealing(e1, e2) => {
+            CollisionEvent::MissileToEnemy(e1, e2) => {
                 let damage_dealer = damage_dealers.get_component::<DamageDealer>(*e1).unwrap();
                 let mut armor = armors.get_component_mut::<Armor>(*e2).unwrap();
                 // Multiple damaging at the same frame can happen, before despawning
@@ -127,18 +168,21 @@ pub fn collision_system(
                     }
                 }
             }
-            CollisionEvent::WeaponLooting(e1, e2) => {
-                let mut weapon = weapons.get_component_mut::<Weapon>(*e1).unwrap();
+            CollisionEvent::ShipToLoot(e1, e2) => {
                 let loot = loots.get_component::<Loot>(*e2).unwrap();
                 commands.despawn_from_arena(*e2);
                 match loot {
                     Loot::IncreasedRateOfFire(p) => {
-                        weapon.fire_timer.duration =
-                            weapon.fire_timer.duration / (*p as f32 / 100.0);
+                        if let Ok(mut weapon) = weapons.get_component_mut::<Weapon>(*e1) {
+                            weapon.fire_timer.duration =
+                                weapon.fire_timer.duration / (*p as f32 / 100.0);
+                        }
                     }
                     Loot::IncreasedMunitionDuration(p) => {
-                        weapon.munition_lifespan = weapon.munition_lifespan * (*p as f32 / 100.0);
-                        println!("Duration {}", weapon.munition_lifespan);
+                        if let Ok(mut weapon) = weapons.get_component_mut::<Weapon>(*e1) {
+                            weapon.munition_lifespan =
+                                weapon.munition_lifespan * (*p as f32 / 100.0);
+                        }
                     }
                     _ => {}
                 }
