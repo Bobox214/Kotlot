@@ -42,7 +42,7 @@ fn main() {
         .add_event::<XpEvent>()
         .add_event::<LootEvent>()
         .add_event::<CollisionEvent>()
-        .add_default_plugins()
+        .add_plugins(DefaultPlugins)
         .add_plugin(bevy_contrib_bobox::Cursor2dWorldPosPlugin)
         .add_plugin(InputMapPlugin::default())
         .add_event::<FireWeaponEvent>()
