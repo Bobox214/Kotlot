@@ -14,7 +14,7 @@ ncollide2d = "0.24.0"
 bevy_contrib_bobox = { git = "https://github.com/Bobox214/bevy_contrib_bobox" , tag="0.3.0"}
 #bevy_contrib_bobox = { path = "../bevy_contrib_bobox" }
 #bevy_prototype_input_map = { git = "https://github.com/PradeepKumarRajamanickam/bevy_input_map"}
-bevy_prototype_input_map = { path = "../gits/bevy_input_map"}
+bevy_prototype_input_map = { git = "https://github.com/Bobox214/bevy_input_map", branch="minimal_update_to_bevy_0_3_0" }
 
 #[patch.crates-io]
 #bevy= {git="https://github.com/bevyengine/bevy"}
