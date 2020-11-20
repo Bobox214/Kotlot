@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use super::*;
 use ncollide2d::{
     na::{self, Isometry2, Vector2},
@@ -72,54 +74,57 @@ pub fn collision_system(
     mut world: ResMut<CollisionWorld<f32, Entity>>,
     mut cursor_selection: ResMut<CursorSelection>,
     mut collision_events: ResMut<Events<CollisionEvent>>,
+    mut selection_changed_events: ResMut<Events<CursorSelectionEvent>>,
     collider_types: Query<&ColliderType>,
 ) {
     world.update();
-    cursor_selection.enemies = vec![];
-    cursor_selection.loots = vec![];
+    let mut enemies = HashSet::new();
+    let mut loots = HashSet::new();
     for (h1, h2, _, manifold) in world.contact_pairs(true) {
         if let Some(_tracked_contact) = manifold.deepest_contact() {
             let e1 = *world.collision_object(h1).unwrap().data();
             let e2 = *world.collision_object(h2).unwrap().data();
-            let t1 = *collider_types
-                .get_component::<ColliderType>(e1)
-                .expect("Collision with an Entity without a ColliderType");
-            let t2 = *collider_types
-                .get_component::<ColliderType>(e2)
-                .expect("Collision with an Entity without a ColliderType");
-            if t1 == ColliderType::Missile && t2 == ColliderType::Enemy {
-                collision_events.send(CollisionEvent::MissileToEnemy(e1, e2))
-            }
-            if t2 == ColliderType::Missile && t1 == ColliderType::Enemy {
-                collision_events.send(CollisionEvent::MissileToEnemy(e2, e1))
-            }
-            if t1 == ColliderType::Ship && t2 == ColliderType::Loot {
-                collision_events.send(CollisionEvent::ShipToLoot(e1, e2))
-            }
-            if t2 == ColliderType::Ship && t1 == ColliderType::Loot {
-                collision_events.send(CollisionEvent::ShipToLoot(e2, e1))
-            }
-            if t1 == ColliderType::Cursor {
-                if t2 == ColliderType::Enemy {
-                    cursor_selection.loots.push(e2);
-                    println!("SELECTING enemy");
-                }
-                if t2 == ColliderType::Loot {
-                    cursor_selection.loots.push(e2);
-                    println!("SELECTING loot");
-                }
-            }
-            if t2 == ColliderType::Cursor {
-                if t1 == ColliderType::Enemy {
-                    cursor_selection.loots.push(e1);
-                    println!("SELECTING enemy");
-                }
-                if t2 == ColliderType::Loot {
-                    cursor_selection.loots.push(e1);
-                    println!("SELECTING loot");
+            if let Ok(&t1) = collider_types.get_component::<ColliderType>(e1) {
+                if let Ok(&t2) = collider_types.get_component::<ColliderType>(e2) {
+                    if t1 == ColliderType::Missile && t2 == ColliderType::Enemy {
+                        collision_events.send(CollisionEvent::MissileToEnemy(e1, e2))
+                    }
+                    if t2 == ColliderType::Missile && t1 == ColliderType::Enemy {
+                        collision_events.send(CollisionEvent::MissileToEnemy(e2, e1))
+                    }
+                    if t1 == ColliderType::Ship && t2 == ColliderType::Loot {
+                        collision_events.send(CollisionEvent::ShipToLoot(e1, e2))
+                    }
+                    if t2 == ColliderType::Ship && t1 == ColliderType::Loot {
+                        collision_events.send(CollisionEvent::ShipToLoot(e2, e1))
+                    }
+                    if t1 == ColliderType::Cursor {
+                        if t2 == ColliderType::Enemy {
+                            enemies.insert(e2);
+                        }
+                        if t2 == ColliderType::Loot {
+                            loots.insert(e2);
+                        }
+                    }
+                    if t2 == ColliderType::Cursor {
+                        if t1 == ColliderType::Enemy {
+                            enemies.insert(e1);
+                        }
+                        if t2 == ColliderType::Loot {
+                            loots.insert(e1);
+                        }
+                    }
                 }
             }
         }
+    }
+    if enemies != cursor_selection.enemies || loots != cursor_selection.loots {
+        let prev_enemies = std::mem::replace(&mut cursor_selection.enemies, enemies);
+        let prev_loots = std::mem::replace(&mut cursor_selection.loots, loots);
+        selection_changed_events.send(CursorSelectionEvent {
+            prev_enemies: prev_enemies,
+            prev_loots: prev_loots,
+        });
     }
 }
 

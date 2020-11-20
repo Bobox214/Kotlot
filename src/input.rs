@@ -1,4 +1,4 @@
-use std::f32::consts::FRAC_PI_2;
+use std::{collections::HashSet, f32::consts::FRAC_PI_2};
 
 use super::*;
 use bevy::app::AppExit;
@@ -27,10 +27,15 @@ pub struct ActionSystemState {
     active_reader: EventReader<OnActionActive>,
 }
 
+pub struct CursorSelectionEvent {
+    pub prev_enemies: HashSet<Entity>,
+    pub prev_loots: HashSet<Entity>,
+}
+
 pub struct CursorSelection {
     pub cursor_collider_handle: CollisionObjectSlabHandle,
-    pub enemies: Vec<Entity>,
-    pub loots: Vec<Entity>,
+    pub enemies: HashSet<Entity>,
+    pub loots: HashSet<Entity>,
 }
 pub fn spawn_cursor_collider(
     mut commands: Commands,
@@ -38,7 +43,7 @@ pub fn spawn_cursor_collider(
 ) {
     commands.spawn((ColliderType::Cursor,));
     let entity = commands.current_entity().unwrap();
-    let shape = ShapeHandle::new(Ball::new(1.0));
+    let shape = ShapeHandle::new(Ball::new(20.0));
     let (cursor_collider_handle, _) = collide_world.add(
         Isometry2::new(Vector2::new(0.0, 0.0), na::zero()),
         shape,
@@ -49,8 +54,8 @@ pub fn spawn_cursor_collider(
     commands.insert(entity, (cursor_collider_handle,));
     commands.insert_resource(CursorSelection {
         cursor_collider_handle,
-        enemies: vec![],
-        loots: vec![],
+        enemies: HashSet::new(),
+        loots: HashSet::new(),
     });
 }
 pub fn cursor_collider_system(

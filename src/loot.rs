@@ -1,3 +1,5 @@
+use bevy_contrib_bobox::{OutlineConfiguration, OutlineMaterial};
+
 use super::*;
 pub struct LootEvent {
     pub position: Vec2,
@@ -25,6 +27,7 @@ pub fn loot_spawn_system(
     loot_events: Res<Events<LootEvent>>,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    mut outline_materials: ResMut<Assets<OutlineMaterial>>,
     (mut collide_world, collide_groups): (ResMut<CollisionWorld<f32, Entity>>, Res<CollideGroups>),
 ) {
     for event in loot_event_reader.iter(&*loot_events) {
@@ -47,7 +50,15 @@ pub fn loot_spawn_system(
                 })
                 .with(loot)
                 .with(ColliderType::Loot)
-                .with(TweenScale::new(Vec3::splat(0.4), Vec3::splat(0.75), 1.0));
+                .with(TweenScale::new(Vec3::splat(0.4), Vec3::splat(0.75), 1.0))
+                .with(outline_materials.add(OutlineMaterial {
+                    configuration: OutlineConfiguration {
+                        color: Color::rgb(0.7, 0.7, 1.0),
+                        width: 5,
+                        ..Default::default()
+                    },
+                    with_outline: false,
+                }));
             let entity = commands.current_entity().unwrap();
             let shape = ShapeHandle::new(Ball::new(30.0 * 0.75 * 0.5));
             let (collision_object_handle, _) = collide_world.add(

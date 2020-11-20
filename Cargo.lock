@@ -346,7 +346,7 @@ dependencies = [
 [[package]]
 name = "bevy_contrib_bobox"
 version = "0.3.0"
-source = "git+https://github.com/Bobox214/bevy_contrib_bobox?tag=0.3.0#b5e2bccfb7b086d576ac593abea9188a98543742"
+source = "git+https://github.com/Bobox214/bevy_contrib_bobox?tag=v0.3.1#2a66ab2a64292e1729bd6702d805b4b48709b385"
 dependencies = [
  "bevy",
 ]
@@ -556,8 +556,9 @@ dependencies = [
 
 [[package]]
 name = "bevy_prototype_input_map"
-version = "0.1.3"
-source = "git+https://github.com/Bobox214/bevy_input_map?branch=minimal_update_to_bevy_0_3_0#5c3ce73c80b24b2dd3e7b6fb3801876952712418"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "909b1dbdf256c77c5d34a7fbe1db6f7f94007c1ed85776f7261332cb1dbdda11"
 dependencies = [
  "bevy",
  "ron",

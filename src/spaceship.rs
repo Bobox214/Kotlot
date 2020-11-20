@@ -111,13 +111,13 @@ pub fn spawn_player_spaceship(
         })
         .with(Spaceship {
             max_angvel: 2.0 * PI,
-            max_linvel: 300.0,
+            max_linvel: 1000.0,
             max_latvel: 300.0,
         })
         .with(FollowedCamera(camera_entity))
         .with(Weapon {
-            fire_timer: Timer::from_seconds(1.0, false),
-            munition_lifespan: 0.5,
+            fire_timer: Timer::from_seconds(0.5, false),
+            munition_lifespan: 1.5,
         })
         .with(Progression::new())
         .with(ColliderType::Ship);

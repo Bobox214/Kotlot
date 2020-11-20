@@ -7,15 +7,13 @@ edition = "2018"
 [dependencies]
 #bevy = { git = "https://github.com/bevyengine/bevy", features = ["vorbis"]}
 bevy = { version = "0.3.0", features = ["vorbis"]}
-#bevy = { path = "/home/boris/work/rust/forks/bevy"}
-#bevy = "0.2.1"
+#bevy = { path = "/home/boris/work/forks/bevy", features=["vorbis"]}
 rand = "0.7.3"
 ncollide2d = "0.24.0"
-bevy_contrib_bobox = { git = "https://github.com/Bobox214/bevy_contrib_bobox" , tag="0.3.0"}
+bevy_contrib_bobox = { git = "https://github.com/Bobox214/bevy_contrib_bobox" , tag="v0.3.1"}
 #bevy_contrib_bobox = { path = "../bevy_contrib_bobox" }
-#bevy_prototype_input_map = { git = "https://github.com/PradeepKumarRajamanickam/bevy_input_map"}
-bevy_prototype_input_map = { git = "https://github.com/Bobox214/bevy_input_map", branch="minimal_update_to_bevy_0_3_0" }
+bevy_prototype_input_map = "0.1.5"
 
 #[patch.crates-io]
 #bevy= {git="https://github.com/bevyengine/bevy"}
-#bevy = { path = "/home/boris/work/rust/forks/bevy"}
+#bevy = { path = "/home/boris/work/forks/bevy" , features=["vorbis"]}

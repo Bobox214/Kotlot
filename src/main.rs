@@ -1,5 +1,5 @@
 use bevy::{app::startup_stage, prelude::*, render::camera::Camera};
-use bevy_contrib_bobox::Cursor2dWorldPos;
+use bevy_contrib_bobox::{Cursor2dWorldPos, OutlineConfiguration, OutlineMaterial};
 use bevy_prototype_input_map::InputMapPlugin;
 use ncollide2d::{
     na,
@@ -20,14 +20,18 @@ mod armor;
 mod collision;
 mod input;
 mod loot;
+mod selection;
 mod spaceship;
+mod ui;
 mod weapon;
 use arena::*;
 use armor::*;
 use collision::*;
 use input::*;
 use loot::*;
+use selection::*;
 use spaceship::*;
+use ui::*;
 use weapon::*;
 
 fn main() {
@@ -41,16 +45,19 @@ fn main() {
         })
         .add_event::<XpEvent>()
         .add_event::<LootEvent>()
+        .add_event::<CursorSelectionEvent>()
         .add_event::<CollisionEvent>()
         .add_plugins(DefaultPlugins)
         .add_plugin(bevy_contrib_bobox::Cursor2dWorldPosPlugin)
+        .add_plugin(bevy_contrib_bobox::Outline2dPlugin)
         .add_plugin(InputMapPlugin::default())
         .add_event::<FireWeaponEvent>()
         .add_startup_system_to_stage(startup_stage::PRE_STARTUP, setup_ncollide.system())
         .add_startup_system(setup_input.system())
         .add_startup_system(setup.system())
-        .add_startup_system(spawn_background.system())
+        //.add_startup_system(spawn_background.system())
         .add_startup_system(spawn_cursor_collider.system())
+        .add_startup_system(setup_ui.system())
         .add_startup_system_to_stage(startup_stage::POST_STARTUP, spawn_player_spaceship.system())
         .add_startup_system_to_stage(startup_stage::POST_STARTUP, spawn_arena_markers.system())
         .add_system(spawn_asteroid.system())
@@ -70,6 +77,7 @@ fn main() {
         .add_system(loot_spawn_system.system())
         .add_system(tweenscale_system.system())
         .add_system(cursor_collider_system.system())
+        .add_system(show_selection_system.system())
         .run();
 }
 
@@ -92,11 +100,11 @@ pub fn setup(mut commands: Commands) {
     });
     commands.spawn(UiCameraComponents::default());
     commands.insert_resource(Arena {
-        size: Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32),
+        size: Vec2::new(2.0 * (WINDOW_WIDTH as f32), 2.0 * (WINDOW_HEIGHT as f32)),
         shown: ArenaQuadrant::NW,
     });
 }
-pub fn spawn_background(
+pub fn _spawn_background(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
@@ -122,6 +130,7 @@ pub fn spawn_asteroid(
     asset_server: Res<AssetServer>,
     arena: Res<Arena>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    mut outline_materials: ResMut<Assets<OutlineMaterial>>,
     mut collide_world: ResMut<CollisionWorld<f32, Entity>>,
     collide_groups: Res<CollideGroups>,
     enemies: Query<&Enemy>,
@@ -134,8 +143,8 @@ pub fn spawn_asteroid(
         let mut x;
         let mut y;
         loop {
-            x = rng.gen_range(-arena.size.x() / 2.0, arena.size.x() / 2.0);
-            y = rng.gen_range(-arena.size.y() / 2.0, arena.size.y() / 2.0);
+            x = rng.gen_range(-arena.size.x() / 4.0, arena.size.x() / 4.0);
+            y = rng.gen_range(-arena.size.y() / 4.0, arena.size.y() / 4.0);
             if ship_transforms.iter().all(|transform| {
                 ((transform.translation.x() - x).powi(2) + (transform.translation.y() - y).powi(2))
                     > 300.0f32.powi(2)
@@ -155,7 +164,15 @@ pub fn spawn_asteroid(
             })
             .with(Armor::new(3))
             .with(Enemy { xp: 2 })
-            .with(ColliderType::Enemy);
+            .with(ColliderType::Enemy)
+            .with(outline_materials.add(OutlineMaterial {
+                configuration: OutlineConfiguration {
+                    color: Color::rgb(0.7, 0.7, 1.0),
+                    width: 5,
+                    ..Default::default()
+                },
+                with_outline: false,
+            }));
         let entity = commands.current_entity().unwrap();
         let shape = ShapeHandle::new(Ball::new(215.0 * 0.5 * 0.5));
         let (collision_object_handle, _) = collide_world.add(
